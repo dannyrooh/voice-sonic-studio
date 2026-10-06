@@ -1,5 +1,5 @@
 import { AudioBridge } from './audio.js';
-import { LatencyLog, formatLatency } from './metrics.js';
+import { LatencyLog, describeLatency } from './metrics.js';
 
 const $ = id => document.getElementById(id);
 const form = $('config-form');
@@ -46,7 +46,7 @@ function updatePreview() {
   $('json-preview').textContent = JSON.stringify(preview, null, 2);
   $('remove-image').disabled = !avatar;
 }
-function markDirty() { editRevision++; dirty = true; $('save-state').textContent = 'Alterações não salvas'; updatePreview(); }
+function markDirty() { editRevision++; dirty = true; $('save-state').textContent = 'Alterações não salvas'; $('save-state').classList.replace('saved', 'dirty') || $('save-state').classList.add('dirty'); updatePreview(); }
 function applyConfig(c, id = null) {
   editRevision++; contextRevision++;
   currentId = id; avatar = c.character.avatar;
@@ -57,7 +57,7 @@ function applyConfig(c, id = null) {
   $('interruption').checked = c.conversation.allowInterruption;
   $('temperature').value = c.conversation.temperature; $('top-p').value = c.conversation.topP; $('max-tokens').value = c.conversation.maxTokens;
   $('avatar').value = ''; dirty = false;
-  $('save-state').textContent = id ? 'Configuração salva' : 'Nova configuração';
+  $('save-state').textContent = id ? 'Configuração salva' : 'Nova configuração'; $('save-state').classList.remove('dirty'); $('save-state').classList.toggle('saved', Boolean(id));
   $('loaded-info').textContent = id ? `Editando: ${c.name}` : 'Nova configuração';
   updatePreview();
 }
@@ -139,7 +139,9 @@ $('query-models').onclick = async () => {
   finally { button.disabled = false; }
 };
 
-function conversationState(text, connected = false) { $('voice-state').textContent = text; $('connection-status').textContent = connected ? 'Conversa conectada' : 'Conversa desconectada'; $('connection-status').classList.toggle('connected', connected); }
+function conversationState(text, connected = false) { $('voice-state').textContent = text; $('connection-status').textContent = connected ? 'Conversa conectada' : 'Conversa desconectada'; $('connection-status').classList.toggle('connected', connected);
+  document.querySelector('.booth').dataset.state = !connected ? 'idle' : text === 'Falando' ? 'speaking' : 'live';
+}
 function resetConversation() {
   clearTimeout(connectTimer); audio?.close(); audio = null; socket = null; active = false; connecting = false;
   $('start-conversation').disabled = false; $('stop-conversation').disabled = true; conversationState('Pronto para começar');
@@ -151,9 +153,13 @@ function stopConversation() {
   resetConversation();
 }
 function recordLatency(source, ms) {
-  latency.add(source, ms);
-  $('latency').textContent = `${formatLatency('Latência percebida', latency.summary('perceived'))}
-${formatLatency('Latência do modelo', latency.summary('model'))}`;
+  latency.add(source, ms); renderLatency();
+}
+function renderLatency() {
+  for (const source of ['perceived', 'model']) {
+    const { value, detail } = describeLatency(latency.summary(source));
+    $(`latency-${source}`).textContent = value; $(`latency-${source}-detail`).textContent = detail;
+  }
 }
 function showTranscript(message) {
   let record = transcripts.get(message.id);
@@ -165,14 +171,16 @@ function showTranscript(message) {
     record = { text, value: '' }; transcripts.set(message.id, record);
     if (transcripts.size > 100) { const oldest = transcripts.keys().next().value; transcripts.get(oldest).text.parentElement.remove(); transcripts.delete(oldest); }
   }
+  const box = $('transcripts'); const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 40;
   record.value += message.text; record.text.textContent = record.value;
+  if (atBottom) box.scrollTop = box.scrollHeight;
 }
 $('start-conversation').onclick = async () => {
   if (!form.reportValidity() || active || connecting) return;
   const config = readConfig();
   if (!config.connection.modelId.trim()) { notice('Informe o identificador do modelo Sonic antes de iniciar.', true); $('model-id').focus(); return; }
   connecting = true; const token = ++attempt;
-  latency = new LatencyLog(); $('latency').textContent = '';
+  latency = new LatencyLog(); renderLatency();
   $('start-conversation').disabled = true; $('stop-conversation').disabled = false; conversationState('Solicitando microfone…');
   const bridge = new AudioBridge(bytes => {
     if (active && socket?.readyState === WebSocket.OPEN) {
@@ -210,13 +218,13 @@ $('start-conversation').onclick = async () => {
   }
 };
 $('stop-conversation').onclick = () => { stopConversation(); notice('Conversa encerrada e microfone liberado.'); };
-$('clear-transcript').onclick = () => { transcripts.clear(); $('transcripts').replaceChildren(); $('usage').textContent = ''; $('latency').textContent = ''; latency = new LatencyLog(); };
+$('clear-transcript').onclick = () => { transcripts.clear(); const empty = document.createElement('p'); empty.className = 'empty-message'; empty.textContent = 'Transcrição limpa. As próximas falas aparecem aqui.'; $('transcripts').replaceChildren(empty); $('usage').textContent = ''; latency = new LatencyLog(); renderLatency(); };
 window.addEventListener('beforeunload', event => { audio?.close(); socket?.close(); if (dirty) { event.preventDefault(); event.returnValue = ''; } });
 async function initialize() {
   try {
     const bootstrap = await api('/api/bootstrap'); initial = bootstrap.defaults;
-    $('profile-badge').textContent = `AWS · ${bootstrap.aws.awsProfile} · ${bootstrap.aws.region}`;
-    $('aws-info').textContent = `Perfil ${bootstrap.aws.awsProfile} · Região ${bootstrap.aws.region}. Definidos no .env da raiz; reinicie o servidor após alterar.`;
+    $('profile-badge').textContent = `${bootstrap.aws.awsProfile} / ${bootstrap.aws.region}`;
+    $('aws-info').textContent = `Perfil ${bootstrap.aws.awsProfile} na região ${bootstrap.aws.region}, lidos do .env da raiz. Reinicie o servidor após alterar.`;
     bootstrap.voices.forEach(v => $('voice-options').append(new Option(v.label, v.id)));
     applyConfig(initial); await refreshSaved();
   } catch (error) { notice(`Não foi possível iniciar a tela: ${error.message}`, true); $('start-conversation').disabled = true; }

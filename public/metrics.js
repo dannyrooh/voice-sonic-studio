@@ -22,7 +22,7 @@ export class LatencyLog {
     return { count: values.length, last: values.at(-1), p50: percentile(sorted, 50), p95: percentile(sorted, 95) };
   }
 }
-export function formatLatency(label, s) {
-  if (!s) return `${label}: aguardando primeira resposta`;
-  return `${label}: última ${s.last} ms · p50 ${s.p50} ms · p95 ${s.p95} ms · ${s.count} ${s.count === 1 ? 'turno' : 'turnos'}`;
+export function describeLatency(s) {
+  if (!s) return { value: '—', detail: 'p50 por turno' };
+  return { value: `${s.p50} ms`, detail: `p95 ${s.p95} ms, última ${s.last} ms, ${s.count} ${s.count === 1 ? 'turno' : 'turnos'}` };
 }

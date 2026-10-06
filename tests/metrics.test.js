@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { voiceLevel, LatencyLog, formatLatency } from '../public/metrics.js';
+import { voiceLevel, LatencyLog, describeLatency } from '../public/metrics.js';
 import { AudioBridge } from '../public/audio.js';
 
 function pcm(values) {
@@ -22,9 +22,9 @@ test('summarizes latency per source with nearest-rank percentiles', () => {
   log.add('model', 450);
   assert.deepEqual(log.summary('perceived'), { count: 5, last: 1000, p50: 900, p95: 1200 });
   assert.deepEqual(log.summary('model'), { count: 1, last: 450, p50: 450, p95: 450 });
-  assert.equal(formatLatency('Percebida', log.summary('perceived')), 'Percebida: última 1000 ms · p50 900 ms · p95 1200 ms · 5 turnos');
-  assert.equal(formatLatency('Modelo', log.summary('model')), 'Modelo: última 450 ms · p50 450 ms · p95 450 ms · 1 turno');
-  assert.equal(formatLatency('Modelo', null), 'Modelo: aguardando primeira resposta');
+  assert.deepEqual(describeLatency(log.summary('perceived')), { value: '900 ms', detail: 'p95 1200 ms, última 1000 ms, 5 turnos' });
+  assert.deepEqual(describeLatency(log.summary('model')), { value: '450 ms', detail: 'p95 450 ms, última 450 ms, 1 turno' });
+  assert.deepEqual(describeLatency(null), { value: '—', detail: 'p50 por turno' });
   assert.throws(() => log.add('other', 1), /fonte/i);
 });
 
