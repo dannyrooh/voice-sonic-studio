@@ -708,3 +708,4 @@ Com fones e a chave configurada: arquitetura "Transcribe + Bedrock + ElevenLabs"
 ## Ledger
 
 - 2026-10-06: plano escrito com base na documentação pública do ElevenLabs; sem chave na conta ainda, nenhum teste real feito.
+- 2026-10-06: executado com subagentes (Tasks 1-5, revisão por tarefa, revisão final e uma onda de correção). 51 testes passando. Pendente: chave ELEVENLABS_API_KEY no .env, `npm run probe:elevenlabs` e conversa real com microfone.
