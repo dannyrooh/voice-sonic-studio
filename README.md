@@ -2,11 +2,11 @@
   <img src="docs/assets/banner.jpg" alt="Microfone de estúdio emitindo três ondas de áudio coloridas, uma por arquitetura de voz, que chegam a um balão de fala" width="100%">
 </p>
 
-<h1 align="center">Sonic Studio</h1>
+<h1 align="center">Voice Lab · Comparador de Voz com IA na AWS</h1>
 
 <p align="center">
-  <strong>Compare, com números reais, três formas de dar voz a um assistente de IA na AWS.</strong><br>
-  O mesmo personagem, as mesmas instruções e as mesmas métricas. Só muda a arquitetura.
+  <strong>Escolha a voz do seu assistente com dados, não com promessa de fornecedor.</strong><br>
+  Nova Sonic, Polly e ElevenLabs lado a lado: mesmo personagem, mesmas instruções, latência medida em milissegundos.
 </p>
 
 <p align="center">
@@ -20,11 +20,11 @@
 
 ---
 
-## Por que o Sonic Studio existe
+## Por que o Voice Lab existe
 
 Escolher a voz de um assistente comercial não é só escolher um timbre. A arquitetura decide **quanto o cliente espera** depois de falar, **quão natural** a resposta soa e **quanto trabalho** dá para manter tudo funcionando. Essas três coisas brigam entre si, e a documentação de cada fornecedor só conta a própria versão.
 
-O Sonic Studio coloca as três opções lado a lado, no seu computador e com a sua conta AWS. Você conversa com o mesmo personagem nas três arquiteturas e a tela mede cada resposta em milissegundos. A decisão passa a ser baseada em números, não em promessa de fornecedor.
+O Voice Lab coloca as três opções lado a lado, no seu computador e com a sua conta AWS. Você conversa com o mesmo personagem nas três arquiteturas e a tela mede cada resposta em milissegundos. A decisão passa a ser baseada em números, não em promessa de fornecedor.
 
 ## O que você ganha
 
@@ -36,7 +36,7 @@ O Sonic Studio coloca as três opções lado a lado, no seu computador e com a s
 - **Pronto para medir a conta.** Scripts `probe` verificam permissões e latências na AWS e no ElevenLabs sem abrir a tela.
 
 <p align="center">
-  <img src="docs/assets/tela.png" alt="Tela do Sonic Studio: painel do personagem, painel de voz e comportamento com o seletor de arquitetura, e a cabine de conversa com as métricas de latência" width="100%">
+  <img src="docs/assets/tela.png" alt="Tela do Voice Lab: painel do personagem, painel de voz e comportamento com o seletor de arquitetura, e a cabine de conversa com as métricas de latência" width="100%">
 </p>
 
 ## Entenda as três arquiteturas
@@ -120,7 +120,7 @@ As medições da cascata AWS estão em [docs/polly-cascade-design.md](docs/polly
    npm run probe:cascade
    ```
 
-4. **Inicie o estúdio** e abra **http://localhost:3000**:
+4. **Inicie o laboratório** e abra **http://localhost:3000**:
 
    ```powershell
    npm start
