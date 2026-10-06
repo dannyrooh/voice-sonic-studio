@@ -19,8 +19,10 @@ async function api(path, options = {}) {
 function readConfig() {
   return {
     schemaVersion: 1, name: $('config-name').value,
+    pipeline: $('pipeline').value,
     character: { name: $('character-name').value, avatar },
     connection: { modelId: $('model-id').value },
+    cascade: { llmModelId: $('llm-model-id').value, pollyVoiceId: $('polly-voice-id').value },
     conversation: {
       voiceId: $('voice-id').value, language: $('language').value, systemPrompt: $('system-prompt').value,
       endpointingSensitivity: $('sensitivity').value, allowInterruption: $('interruption').checked,
@@ -33,11 +35,13 @@ function renderAvatar(container, small = false) {
   if (avatar) { const image = document.createElement('img'); image.src = avatar.dataUrl; image.alt = `Personagem ${$('character-name').value}`; container.append(image); }
   else { const span = document.createElement('span'); span.textContent = ($('character-name').value || 'A').slice(0, 1); container.append(span); }
 }
+function showPipeline() { for (const element of document.querySelectorAll('[data-pipeline]')) element.hidden = element.dataset.pipeline !== $('pipeline').value; }
 function updatePreview() {
+  showPipeline();
   const c = readConfig();
   if (!active && !connecting) {
     $('preview-name').textContent = c.character.name || 'Personagem';
-    $('preview-language').textContent = $('language').selectedOptions[0].textContent;
+    $('preview-language').textContent = `${$('language').selectedOptions[0].textContent}, ${$('pipeline').selectedOptions[0].textContent}`;
     renderAvatar($('conversation-avatar'), true);
   }
   renderAvatar($('avatar-preview'));
@@ -52,6 +56,7 @@ function applyConfig(c, id = null) {
   currentId = id; avatar = c.character.avatar;
   $('config-name').value = c.name; $('character-name').value = c.character.name;
   $('model-id').value = c.connection.modelId;
+  $('pipeline').value = c.pipeline; $('llm-model-id').value = c.cascade.llmModelId; $('polly-voice-id').value = c.cascade.pollyVoiceId;
   $('voice-id').value = c.conversation.voiceId; $('language').value = c.conversation.language;
   $('system-prompt').value = c.conversation.systemPrompt; $('sensitivity').value = c.conversation.endpointingSensitivity;
   $('interruption').checked = c.conversation.allowInterruption;
@@ -178,9 +183,10 @@ function showTranscript(message) {
 $('start-conversation').onclick = async () => {
   if (!form.reportValidity() || active || connecting) return;
   const config = readConfig();
-  if (!config.connection.modelId.trim()) { notice('Informe o identificador do modelo Sonic antes de iniciar.', true); $('model-id').focus(); return; }
+  const missingModel = config.pipeline === 'polly' ? !config.cascade.llmModelId.trim() && 'llm-model-id' : !config.connection.modelId.trim() && 'model-id';
+  if (missingModel) { notice(config.pipeline === 'polly' ? 'Informe o modelo de texto do Bedrock antes de iniciar.' : 'Informe o identificador do modelo Sonic antes de iniciar.', true); $(missingModel).focus(); return; }
   connecting = true; const token = ++attempt;
-  latency = new LatencyLog(); renderLatency();
+  latency = new LatencyLog(); renderLatency(); $('stages').textContent = '';
   $('start-conversation').disabled = true; $('stop-conversation').disabled = false; conversationState('Solicitando microfone…');
   const bridge = new AudioBridge(bytes => {
     if (active && socket?.readyState === WebSocket.OPEN) {
@@ -204,8 +210,11 @@ $('start-conversation').onclick = async () => {
         else if (message.type === 'audio') bridge.play(message.audio, message.sampleRate);
         else if (message.type === 'transcript') showTranscript(message);
         else if (message.type === 'interrupted') bridge.interrupt();
-        else if (message.type === 'latency') recordLatency(message.source, message.ms);
-        else if (message.type === 'usage') $('usage').textContent = `Tokens: ${message.inputTokens ?? '—'} de entrada · ${message.outputTokens ?? '—'} de saída`;
+        else if (message.type === 'latency') {
+          recordLatency(message.source, message.ms);
+          if (message.stages) $('stages').textContent = `Último turno: primeiro texto em ${message.stages.llm} ms, voz ${message.stages.tts} ms depois da primeira frase.`;
+        }
+        else if (message.type === 'usage') $('usage').textContent = `Tokens: ${message.inputTokens ?? '—'} de entrada, ${message.outputTokens ?? '—'} de saída${message.ttsCharacters === undefined ? '' : `, ${message.ttsCharacters} caracteres de voz`}`;
         else if (message.type === 'error') { notice(message.message, true); stopConversation(); }
         else if (message.type === 'ended') { notice(message.message || 'Conversa encerrada.'); stopConversation(); }
       } catch (error) { notice(error.message, true); stopConversation(); }
@@ -218,7 +227,7 @@ $('start-conversation').onclick = async () => {
   }
 };
 $('stop-conversation').onclick = () => { stopConversation(); notice('Conversa encerrada e microfone liberado.'); };
-$('clear-transcript').onclick = () => { transcripts.clear(); const empty = document.createElement('p'); empty.className = 'empty-message'; empty.textContent = 'Transcrição limpa. As próximas falas aparecem aqui.'; $('transcripts').replaceChildren(empty); $('usage').textContent = ''; latency = new LatencyLog(); renderLatency(); };
+$('clear-transcript').onclick = () => { transcripts.clear(); const empty = document.createElement('p'); empty.className = 'empty-message'; empty.textContent = 'Transcrição limpa. As próximas falas aparecem aqui.'; $('transcripts').replaceChildren(empty); $('usage').textContent = ''; $('stages').textContent = ''; latency = new LatencyLog(); renderLatency(); };
 window.addEventListener('beforeunload', event => { audio?.close(); socket?.close(); if (dirty) { event.preventDefault(); event.returnValue = ''; } });
 async function initialize() {
   try {
@@ -226,6 +235,7 @@ async function initialize() {
     $('profile-badge').textContent = `${bootstrap.aws.awsProfile} / ${bootstrap.aws.region}`;
     $('aws-info').textContent = `Perfil ${bootstrap.aws.awsProfile} na região ${bootstrap.aws.region}, lidos do .env da raiz. Reinicie o servidor após alterar.`;
     bootstrap.voices.forEach(v => $('voice-options').append(new Option(v.label, v.id)));
+    bootstrap.pollyVoices.forEach(v => $('polly-voice-options').append(new Option(v.label, v.id)));
     applyConfig(initial); await refreshSaved();
   } catch (error) { notice(`Não foi possível iniciar a tela: ${error.message}`, true); $('start-conversation').disabled = true; }
 }

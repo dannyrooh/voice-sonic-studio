@@ -82,4 +82,14 @@ test('UI initializes, saves, reloads and exports the edited configuration throug
   await until(() => !$('save-config').disabled);
   assert.equal($('config-name').value, 'Edição durante salvamento');
   assert.equal($('save-state').textContent, 'Alterações não salvas');
+  $('pipeline').value = 'polly'; $('pipeline').dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+  const doc = dom.window.document;
+  assert.equal(doc.querySelector('[data-pipeline="sonic"]').hidden, true);
+  assert.equal(doc.querySelector('[data-pipeline="polly"]').hidden, false);
+  assert.equal($('polly-voice-options').options[0].value, 'Camila');
+  $('llm-model-id').value = 'us.amazon.nova-micro-v1:0';
+  exported = null; $('export-json').click(); await until(() => !!exported);
+  const cascade = JSON.parse(await exported.text());
+  assert.equal(cascade.pipeline, 'polly');
+  assert.deepEqual(cascade.cascade, { llmModelId: 'us.amazon.nova-micro-v1:0', pollyVoiceId: 'Camila' });
 });

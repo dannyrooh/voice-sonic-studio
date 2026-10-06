@@ -29,11 +29,15 @@
 </section>
 <section class="panel settings-panel" aria-labelledby="settings-title">
   <h2 id="settings-title">Voz e comportamento</h2>
+  <label for="pipeline">Arquitetura</label><select id="pipeline"><option value="sonic">Nova Sonic (fala para fala)</option><option value="polly">Transcribe + Bedrock + Polly</option></select>
+  <p class="hint">O personagem, as instruções e a espera entre turnos valem para as duas. Compare as latências na cabine.</p>
   <div class="field-row">
-    <div><label for="voice-id">Voz</label><input id="voice-id" list="voice-options" required maxlength="80" value="carolina"><datalist id="voice-options"></datalist></div>
+    <div data-pipeline="sonic"><label for="voice-id">Voz</label><input id="voice-id" list="voice-options" required maxlength="80" value="carolina"><datalist id="voice-options"></datalist></div>
+    <div data-pipeline="polly" hidden><label for="polly-voice-id">Voz do Polly</label><input id="polly-voice-id" list="polly-voice-options" required maxlength="40" value="Camila"><datalist id="polly-voice-options"></datalist></div>
     <div><label for="language">Idioma da conversa</label><select id="language"><option value="pt-BR">Português brasileiro</option><option value="en-US">Inglês</option><option value="es">Espanhol</option><option value="fr">Francês</option><option value="de">Alemão</option><option value="it">Italiano</option><option value="hi">Hindi</option></select></div>
   </div>
-  <p class="hint">Carolina e Leo falam português no Nova 2 Sonic. Confirme as vozes do modelo escolhido.</p>
+  <p class="hint" data-pipeline="sonic">Carolina e Leo falam português no Nova 2 Sonic. Confirme as vozes do modelo escolhido.</p>
+  <p class="hint" data-pipeline="polly" hidden>Camila é a única voz generativa em português brasileiro no Polly.</p>
   <label for="system-prompt">Instruções do personagem</label><textarea id="system-prompt" required maxlength="12000" rows="7"></textarea>
   <div class="field-row">
     <div><label for="sensitivity">Espera entre turnos</label><select id="sensitivity"><option value="HIGH">Rápida</option><option value="MEDIUM">Equilibrada</option><option value="LOW">Paciente</option></select></div>
@@ -42,8 +46,11 @@
   <p class="hint">Sem interrupção, o microfone fica mudo enquanto o personagem fala.</p>
   <details><summary>Parâmetros de geração</summary><div class="parameter-grid"><div><label for="temperature">Temperatura</label><input id="temperature" type="number" min="0" max="1" step="0.01" value="0.7" required></div><div><label for="top-p">Top P</label><input id="top-p" type="number" min="0.01" max="1" step="0.01" value="0.9" required></div><div><label for="max-tokens">Limite de tokens</label><input id="max-tokens" type="number" min="1" max="4096" step="1" value="1024" required></div></div></details>
   <details open><summary>Modelo e conta AWS</summary>
+    <div data-pipeline="sonic">
     <label for="model-id">Identificador do modelo</label><input id="model-id" list="model-options" maxlength="200" placeholder="Informe o modelId do Sonic"><datalist id="model-options"><option value="amazon.nova-2-sonic-v1:0">Nova 2 Sonic (modelo documentado)</option></datalist>
     <div class="model-actions"><button id="query-models" type="button">Consultar modelos da conta</button><p id="model-status" class="hint" aria-live="polite"></p></div>
+    </div>
+    <div data-pipeline="polly" hidden><label for="llm-model-id">Modelo de texto (Bedrock)</label><input id="llm-model-id" list="llm-options" maxlength="200" placeholder="Informe o inference profile"><datalist id="llm-options"><option value="us.amazon.nova-micro-v1:0">Nova Micro (primeiro token mais rápido)</option><option value="us.amazon.nova-2-lite-v1:0">Nova 2 Lite</option><option value="us.anthropic.claude-haiku-4-5-20251001-v1:0">Claude Haiku 4.5</option></datalist><p class="hint">A fala é reconhecida pelo Transcribe Streaming e a resposta é falada pelo Polly generativo em 16 kHz.</p></div>
     <p id="aws-info" class="hint">Perfil e região definidos no .env da raiz.</p>
   </details>
   <details><summary>Ver configuração JSON</summary><pre id="json-preview"></pre></details>
@@ -67,6 +74,7 @@
     <div><dt>Percebida</dt><dd id="latency-perceived">—</dd><dd id="latency-perceived-detail" class="detail">p50 por turno</dd></div>
     <div><dt>Modelo</dt><dd id="latency-model">—</dd><dd id="latency-model-detail" class="detail">p50 por turno</dd></div>
   </dl>
+  <p id="stages" class="booth-hint"></p>
   <p id="usage" class="booth-hint"></p>
 </section>
 </main>
