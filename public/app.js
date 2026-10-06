@@ -3,7 +3,7 @@ import { LatencyLog, describeLatency } from './metrics.js';
 
 const $ = id => document.getElementById(id);
 const form = $('config-form');
-let initial; let avatar = null; let currentId = null; let dirty = false;
+let elevenConfigured = true; let initial; let avatar = null; let currentId = null; let dirty = false;
 let editRevision = 0; let contextRevision = 0;
 let audio = null; let socket = null; let active = false; let connecting = false; let attempt = 0; let connectTimer;
 const transcripts = new Map();
@@ -198,6 +198,7 @@ $('start-conversation').onclick = async () => {
     : config.pipeline === 'elevenlabs' && !config.cascade.elevenVoiceId.trim() ? ['eleven-voice-id', 'Informe a voz do ElevenLabs antes de iniciar.']
       : !cascadePipeline && !config.connection.modelId.trim() ? ['model-id', 'Informe o identificador do modelo Sonic antes de iniciar.'] : null;
   if (missing) { notice(missing[1], true); $(missing[0]).focus(); return; }
+  if (config.pipeline === 'elevenlabs' && !elevenConfigured) { notice('Defina ELEVENLABS_API_KEY e ELEVENLABS_MODEL_ID no .env e reinicie o servidor.', true); return; }
   connecting = true; const token = ++attempt;
   latency = new LatencyLog(); renderLatency(); $('stages').textContent = '';
   $('start-conversation').disabled = true; $('stop-conversation').disabled = false; conversationState('Solicitando microfone…');
@@ -244,7 +245,7 @@ $('clear-transcript').onclick = () => { transcripts.clear(); const empty = docum
 window.addEventListener('beforeunload', event => { audio?.close(); socket?.close(); if (dirty) { event.preventDefault(); event.returnValue = ''; } });
 async function initialize() {
   try {
-    const bootstrap = await api('/api/bootstrap'); initial = bootstrap.defaults;
+    const bootstrap = await api('/api/bootstrap'); initial = bootstrap.defaults; elevenConfigured = bootstrap.elevenLabs.configured;
     $('profile-badge').textContent = `${bootstrap.aws.awsProfile} / ${bootstrap.aws.region}`;
     $('aws-info').textContent = `Perfil ${bootstrap.aws.awsProfile} na região ${bootstrap.aws.region}, lidos do .env da raiz. Reinicie o servidor após alterar.`;
     bootstrap.voices.forEach(v => $('voice-options').append(new Option(v.label, v.id)));

@@ -9,16 +9,17 @@ async function collect(iterable) { const items = []; for await (const item of it
 function fakeSocket(reply = socket => {
   socket.emit('message', Buffer.from(JSON.stringify({ audio: Buffer.from([1, 2, 3, 4]).toString('base64') })));
   socket.emit('message', Buffer.from(JSON.stringify({ isFinal: true })));
-}) {
+}, openError = null) {
   return class FakeSocket extends EventEmitter {
     static OPEN = 1; static last = null;
     constructor(url, options) {
       super(); this.url = new URL(url); this.options = options; this.sent = []; this.readyState = 0; this.terminated = false;
       FakeSocket.last = this;
-      setImmediate(() => { this.readyState = 1; this.emit('open'); });
+      setImmediate(() => { if (openError) { this.readyState = 3; this.emit('error', openError); this.emit('close', 1006, Buffer.from('')); } else { this.readyState = 1; this.emit('open'); } });
     }
     send(data) { const message = JSON.parse(data); this.sent.push(message); if (message.text === '') setImmediate(() => reply(this)); }
-    terminate() { if (this.terminated) return; this.terminated = true; this.readyState = 3; this.emit('close', 1006, Buffer.from('')); }
+    // Como o ws real: terminate() durante CONNECTING emite 'error' e depois 'close'.
+    terminate() { if (this.terminated) return; const connecting = this.readyState === 0; this.terminated = true; this.readyState = 3; if (connecting) this.emit('error', new Error('WebSocket was closed before the connection was established')); this.emit('close', 1006, Buffer.from('')); }
   };
 }
 
@@ -38,6 +39,23 @@ test('speaker streams sentences with flush and yields PCM and characters', async
   assert.equal(socket.options.headers['xi-api-key'], 'chave');
   assert.deepEqual(socket.sent, [{ text: ' ' }, { text: 'Olá. ', flush: true }, { text: 'Tudo bem? ', flush: true }, { text: '' }]);
   assert.equal(socket.terminated, true, 'conexão encerrada ao terminar');
+  const other = fakeSocket();
+  await collect(createElevenLabsSpeaker({ apiKey: 'k', modelId: 'eleven_multilingual_v2', language: 'pt-BR' }, { WebSocketImpl: other })(from(['Oi.']), 'v'));
+  assert.equal(other.last.url.searchParams.has('language_code'), false, 'só v2.5 aceita forçar o idioma');
+});
+
+test('handshake failures get an ElevenLabs prefix and guidance', async () => {
+  const denied = fakeSocket(undefined, new Error('Unexpected server response: 401'));
+  await assert.rejects(collect(createElevenLabsSpeaker({ apiKey: 'k', modelId: 'm', language: 'pt-BR' }, { WebSocketImpl: denied })(from(['Oi.']), 'v')), /ElevenLabs: Unexpected server response: 401\. Verifique ELEVENLABS_API_KEY/);
+});
+
+test('abort before open ends quietly even when the socket emits error', async () => {
+  const FakeSocket = fakeSocket(() => {});
+  const controller = new AbortController();
+  const pending = collect(createElevenLabsSpeaker({ apiKey: 'k', modelId: 'm', language: 'pt-BR' }, { WebSocketImpl: FakeSocket })(from(['Oi.']), 'v', controller.signal));
+  controller.abort();
+  assert.deepEqual(await pending, []);
+  assert.equal(FakeSocket.last.terminated, true);
 });
 
 test('speaker surfaces service errors and abnormal closes', async () => {

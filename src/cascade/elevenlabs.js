@@ -10,7 +10,8 @@ export function elevenLabsSettings(env = process.env) {
 // Mesmo contrato do speak da AWS: frases entram, PCM 16 kHz sai, e no fim a contagem de caracteres.
 export function createElevenLabsSpeaker({ apiKey, modelId, language }, { WebSocketImpl = WebSocket } = {}) {
   return async function* speakWithElevenLabs(texts, voiceId, signal) {
-    const query = new URLSearchParams({ model_id: modelId, output_format: 'pcm_16000', language_code: ELEVEN_LANGUAGES[language], inactivity_timeout: '60' });
+    const query = new URLSearchParams({ model_id: modelId, output_format: 'pcm_16000', inactivity_timeout: '60' });
+    if (modelId.includes('v2_5')) query.set('language_code', ELEVEN_LANGUAGES[language]);
     const socket = new WebSocketImpl(`wss://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}/stream-input?${query}`, { headers: { 'xi-api-key': apiKey } });
     const events = new EventQueue(4096);
     socket.on('message', data => events.push({ data }));
@@ -20,7 +21,11 @@ export function createElevenLabsSpeaker({ apiKey, modelId, language }, { WebSock
     signal?.addEventListener('abort', abort, { once: true });
     let characters = 0;
     try {
-      await new Promise((resolve, reject) => { socket.once('open', resolve); socket.once('error', reject); socket.once('close', resolve); });
+      try { await new Promise((resolve, reject) => { socket.once('open', resolve); socket.once('error', reject); socket.once('close', resolve); }); }
+      catch (error) {
+        if (signal?.aborted) return;
+        throw new Error(`ElevenLabs: ${error.message}. Verifique ELEVENLABS_API_KEY, a voz escolhida e ELEVENLABS_MODEL_ID.`);
+      }
       if (signal?.aborted || socket.readyState !== WebSocketImpl.OPEN) return;
       socket.send(JSON.stringify({ text: ' ' }));
       // Envia frase a frase enquanto o áudio chega; o texto vazio fecha a geração.
