@@ -98,4 +98,17 @@ test('UI initializes, saves, reloads and exports the edited configuration throug
   assert.equal($('config-form').checkValidity(), false);
   assert.equal($('polly-voice-id').disabled, true);
   $('voice-id').value = 'carolina';
+  $('pipeline').value = 'elevenlabs'; $('pipeline').dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+  assert.equal($('llm-model-id').disabled, false, 'modelo de texto compartilhado com a cascata');
+  assert.equal($('polly-voice-id').disabled, true);
+  assert.equal($('eleven-voice-id').disabled, false);
+  assert.match($('eleven-voice-status').textContent, /ELEVENLABS_API_KEY/);
+  $('eleven-voice-id').value = 'voz123';
+  exported = null; $('export-json').click(); await until(() => !!exported);
+  const eleven = JSON.parse(await exported.text());
+  assert.equal(eleven.pipeline, 'elevenlabs');
+  assert.equal(eleven.cascade.elevenVoiceId, 'voz123');
+  $('pipeline').value = 'sonic'; $('pipeline').dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+  $('eleven-voice-id').value = '';
+  assert.equal($('config-form').checkValidity(), true, 'voz do ElevenLabs escondida não trava o formulário');
 });

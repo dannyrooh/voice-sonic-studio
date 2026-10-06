@@ -22,7 +22,7 @@ function readConfig() {
     pipeline: $('pipeline').value,
     character: { name: $('character-name').value, avatar },
     connection: { modelId: $('model-id').value },
-    cascade: { llmModelId: $('llm-model-id').value, pollyVoiceId: $('polly-voice-id').value },
+    cascade: { llmModelId: $('llm-model-id').value, pollyVoiceId: $('polly-voice-id').value, elevenVoiceId: $('eleven-voice-id').value },
     conversation: {
       voiceId: $('voice-id').value, language: $('language').value, systemPrompt: $('system-prompt').value,
       endpointingSensitivity: $('sensitivity').value, allowInterruption: $('interruption').checked,
@@ -35,7 +35,7 @@ function renderAvatar(container, small = false) {
   if (avatar) { const image = document.createElement('img'); image.src = avatar.dataUrl; image.alt = `Personagem ${$('character-name').value}`; container.append(image); }
   else { const span = document.createElement('span'); span.textContent = ($('character-name').value || 'A').slice(0, 1); container.append(span); }
 }
-function showPipeline() { for (const element of document.querySelectorAll('[data-pipeline]')) { element.hidden = element.dataset.pipeline !== $('pipeline').value; for (const input of element.querySelectorAll('input')) input.disabled = element.hidden; } }
+function showPipeline() { for (const element of document.querySelectorAll('[data-pipeline]')) { element.hidden = !element.dataset.pipeline.split(' ').includes($('pipeline').value); for (const input of element.querySelectorAll('input')) input.disabled = element.hidden; } }
 function updatePreview() {
   showPipeline();
   const c = readConfig();
@@ -56,7 +56,7 @@ function applyConfig(c, id = null) {
   currentId = id; avatar = c.character.avatar;
   $('config-name').value = c.name; $('character-name').value = c.character.name;
   $('model-id').value = c.connection.modelId;
-  $('pipeline').value = c.pipeline; $('llm-model-id').value = c.cascade.llmModelId; $('polly-voice-id').value = c.cascade.pollyVoiceId;
+  $('pipeline').value = c.pipeline; $('llm-model-id').value = c.cascade.llmModelId; $('polly-voice-id').value = c.cascade.pollyVoiceId; $('eleven-voice-id').value = c.cascade.elevenVoiceId;
   $('voice-id').value = c.conversation.voiceId; $('language').value = c.conversation.language;
   $('system-prompt').value = c.conversation.systemPrompt; $('sensitivity').value = c.conversation.endpointingSensitivity;
   $('interruption').checked = c.conversation.allowInterruption;
@@ -143,6 +143,16 @@ $('query-models').onclick = async () => {
   } catch (error) { $('model-status').textContent = error.message; notice(error.message, true); }
   finally { button.disabled = false; }
 };
+$('query-eleven-voices').onclick = async () => {
+  const button = $('query-eleven-voices'); button.disabled = true; $('eleven-voice-status').textContent = 'Consultando ElevenLabs…';
+  try {
+    const result = await api('/api/elevenlabs/voices', { method: 'POST' });
+    $('eleven-voice-options').replaceChildren();
+    for (const v of result.voices) $('eleven-voice-options').append(new Option(v.label, v.id));
+    $('eleven-voice-status').textContent = result.voices.length ? `${result.voices.length} vozes encontradas. Escolha o ID no campo de voz.` : 'Nenhuma voz encontrada na conta.';
+  } catch (error) { $('eleven-voice-status').textContent = error.message; notice(error.message, true); }
+  finally { button.disabled = false; }
+};
 
 function conversationState(text, connected = false) { $('voice-state').textContent = text; $('connection-status').textContent = connected ? 'Conversa conectada' : 'Conversa desconectada'; $('connection-status').classList.toggle('connected', connected);
   document.querySelector('.booth').dataset.state = !connected ? 'idle' : text === 'Falando' ? 'speaking' : 'live';
@@ -183,8 +193,11 @@ function showTranscript(message) {
 $('start-conversation').onclick = async () => {
   if (!form.reportValidity() || active || connecting) return;
   const config = readConfig();
-  const missingModel = config.pipeline === 'polly' ? !config.cascade.llmModelId.trim() && 'llm-model-id' : !config.connection.modelId.trim() && 'model-id';
-  if (missingModel) { notice(config.pipeline === 'polly' ? 'Informe o modelo de texto do Bedrock antes de iniciar.' : 'Informe o identificador do modelo Sonic antes de iniciar.', true); $(missingModel).focus(); return; }
+  const cascadePipeline = config.pipeline !== 'sonic';
+  const missing = cascadePipeline && !config.cascade.llmModelId.trim() ? ['llm-model-id', 'Informe o modelo de texto do Bedrock antes de iniciar.']
+    : config.pipeline === 'elevenlabs' && !config.cascade.elevenVoiceId.trim() ? ['eleven-voice-id', 'Informe a voz do ElevenLabs antes de iniciar.']
+      : !cascadePipeline && !config.connection.modelId.trim() ? ['model-id', 'Informe o identificador do modelo Sonic antes de iniciar.'] : null;
+  if (missing) { notice(missing[1], true); $(missing[0]).focus(); return; }
   connecting = true; const token = ++attempt;
   latency = new LatencyLog(); renderLatency(); $('stages').textContent = '';
   $('start-conversation').disabled = true; $('stop-conversation').disabled = false; conversationState('Solicitando microfone…');
@@ -236,6 +249,7 @@ async function initialize() {
     $('aws-info').textContent = `Perfil ${bootstrap.aws.awsProfile} na região ${bootstrap.aws.region}, lidos do .env da raiz. Reinicie o servidor após alterar.`;
     bootstrap.voices.forEach(v => $('voice-options').append(new Option(v.label, v.id)));
     bootstrap.pollyVoices.forEach(v => $('polly-voice-options').append(new Option(v.label, v.id)));
+    $('eleven-voice-status').textContent = bootstrap.elevenLabs.configured ? `Modelo ${bootstrap.elevenLabs.modelId || 'não definido em ELEVENLABS_MODEL_ID'}.` : 'Defina ELEVENLABS_API_KEY e ELEVENLABS_MODEL_ID no .env e reinicie o servidor.';
     applyConfig(initial); await refreshSaved();
   } catch (error) { notice(`Não foi possível iniciar a tela: ${error.message}`, true); $('start-conversation').disabled = true; }
 }
