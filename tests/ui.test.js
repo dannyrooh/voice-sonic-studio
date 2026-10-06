@@ -16,7 +16,7 @@ async function until(condition) {
 }
 test('UI initializes, saves, reloads and exports the edited configuration through real HTTP', async t => {
   const dataDir = await mkdtemp(join(tmpdir(), 'sonic-ui-'));
-  const { server } = createApplication({ dataDir });
+  const { server } = createApplication({ dataDir, awsSettings: { awsProfile: 'perfil-teste', region: 'us-east-1' } });
   server.listen(0, '127.0.0.1'); await once(server, 'listening');
   const base = `http://127.0.0.1:${server.address().port}`;
   const html = await readFile(new URL('../public/index.html', import.meta.url), 'utf8');
@@ -49,7 +49,7 @@ test('UI initializes, saves, reloads and exports the edited configuration throug
   try {
     await until(() => $('system-prompt').value.includes('cordial') && $('saved-configs').options[0]?.textContent === 'Selecione uma configuração');
   } catch (error) { throw new Error(`${error.message} Estado: ${$('notice').textContent}; prompt: ${$('system-prompt').value}; opção: ${$('saved-configs').options[0]?.textContent}`); }
-  assert.match($('profile-badge').textContent, /marksell/);
+  assert.match($('profile-badge').textContent, /perfil-teste/);
   assert.equal($('aws-profile'), null);
   assert.equal($('region'), null);
   $('character-name').value = 'Beatriz'; $('character-name').dispatchEvent(new dom.window.Event('input', { bubbles: true }));
