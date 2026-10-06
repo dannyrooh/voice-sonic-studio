@@ -336,9 +336,9 @@ Este projeto foi desenvolvido pelo autor com o auxílio das ferramentas de IA ab
 
 | Ferramenta | Como ajudou |
 |---|---|
-| [Claude Code](https://claude.com/claude-code) | Pesquisa das APIs, planejamento, implementação, testes, revisão de código e documentação |
-| [Codex (ChatGPT, OpenAI)](https://openai.com/codex) | Apoio no desenvolvimento |
-| [Higgsfield](https://higgsfield.ai) | Mockup de referência da interface e banner do README |
+| [Codex (ChatGPT, OpenAI)](https://openai.com/codex) | Versão base do código e protótipo inicial da interface (`output/sonic-studio.html`) |
+| [Claude Code](https://claude.com/claude-code) | Evolução a partir da base: métricas de latência, redesenho da interface, arquiteturas Polly e ElevenLabs, pesquisa das APIs, testes, revisão de código e documentação |
+| [Higgsfield](https://higgsfield.ai) | Mockup de referência do redesenho da interface e banner do README |
 
 O print da tela é da aplicação real.
 
