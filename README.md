@@ -330,9 +330,17 @@ Usadas para os limites da conta free, que a documentação oficial não detalha.
 - [ElevenLabs API Pricing (puter)](https://developer.puter.com/tutorials/elevenlabs-api-pricing/): Flash v2.5 a 0,5 crédito por caractere e limite de 2 requisições simultâneas no free.
 - [Erro com pcm_44100 (fórum Convai)](https://forum.convai.com/t/elevenlabs-requested-output-format-pcm-44100-error/1438): relato de PCM 44,1 kHz recusado fora do plano Pro.
 
-### Imagens
+## Ferramentas de IA no desenvolvimento
 
-- O banner do topo foi gerado com [Higgsfield](https://higgsfield.ai). O print da tela é da aplicação real.
+Este projeto foi desenvolvido pelo autor com o auxílio das ferramentas de IA abaixo.
+
+| Ferramenta | Como ajudou |
+|---|---|
+| [Claude Code](https://claude.com/claude-code) | Pesquisa das APIs, planejamento, implementação, testes, revisão de código e documentação |
+| [Codex](https://openai.com/codex) | Apoio no desenvolvimento |
+| [Higgsfield](https://higgsfield.ai) | Mockup de referência da interface e banner do README |
+
+O print da tela é da aplicação real.
 
 ## Autor
 
