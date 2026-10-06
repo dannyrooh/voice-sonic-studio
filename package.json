@@ -11,7 +11,8 @@
     "dev": "node --env-file-if-exists=.env --watch src/server.js",
     "test": "node --test",
     "check": "node scripts/check.js",
-    "probe:cascade": "node --env-file-if-exists=.env scripts/probe-cascade.js"
+    "probe:cascade": "node --env-file-if-exists=.env scripts/probe-cascade.js",
+    "probe:elevenlabs": "node --env-file-if-exists=.env scripts/probe-elevenlabs.js"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock": "^3.0.0",
