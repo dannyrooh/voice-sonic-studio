@@ -5,8 +5,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { once } from 'node:events';
 import WebSocket from 'ws';
-import { createApplication } from '../src/app.js';
-import { defaults } from '../src/config.js';
+import { createApplication, createSession } from '../src/app.js';
+import { defaults, validateConfig } from '../src/config.js';
+import { SonicSession } from '../src/sonic.js';
+import { CascadeSession } from '../src/cascade/session.js';
 
 async function fixture(t, options = {}) {
   const dataDir = await mkdtemp(join(tmpdir(), 'sonic-http-'));
@@ -84,6 +86,27 @@ test('invalid websocket configuration returns error before creating AWS session'
   await once(ws, 'open'); const message = once(ws, 'message');
   ws.send(JSON.stringify({ type: 'start', config: defaults() }));
   assert.equal(JSON.parse((await message)[0]).type, 'error');
+  assert.equal(created, false);
+  ws.close();
+});
+test('session factory picks the pipeline chosen in the configuration', () => {
+  const aws = { awsProfile: 'p', region: 'us-east-1' };
+  const sonic = defaults(); sonic.connection.modelId = 'amazon.nova-2-sonic-v1:0';
+  assert.ok(createSession(validateConfig(sonic, { requireModel: true }), () => {}, aws) instanceof SonicSession);
+  const polly = { ...defaults(), pipeline: 'polly', cascade: { llmModelId: 'us.amazon.nova-2-lite-v1:0', pollyVoiceId: 'Camila' } };
+  const session = createSession(validateConfig(polly, { requireModel: true }), () => {}, aws);
+  assert.ok(session instanceof CascadeSession);
+  session.abort();
+});
+test('Polly pipeline needs a Bedrock text model before creating a session', async t => {
+  let created = false;
+  const url = await fixture(t, { sessionFactory: () => { created = true; } });
+  const ws = new WebSocket(url.replace('http', 'ws') + '/ws', { origin: url });
+  await once(ws, 'open'); const message = once(ws, 'message');
+  ws.send(JSON.stringify({ type: 'start', config: { ...defaults(), pipeline: 'polly', cascade: { llmModelId: '', pollyVoiceId: 'Camila' } } }));
+  const reply = JSON.parse((await message)[0]);
+  assert.equal(reply.type, 'error');
+  assert.match(reply.message, /modelo de texto/i);
   assert.equal(created, false);
   ws.close();
 });
