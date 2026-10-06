@@ -59,10 +59,10 @@ export class CascadeSession {
     this.addMessage('user', text);
     const sentences = new EventQueue();
     // Bedrock ou Polly travados sem erro derrubariam a conversa em silêncio: o turno vira falha visível.
-    const timeout = setTimeout(() => { turn.failure ??= new Error(`A resposta demorou mais de ${Math.round(this.turnTimeoutMs / 1000)} s. Verifique o modelo e a conexão com a AWS e inicie outra conversa.`); turn.controller.abort(); }, this.turnTimeoutMs);
+    const timeout = setTimeout(() => { turn.failure ??= new Error(`A resposta demorou mais de ${Math.round(this.turnTimeoutMs / 1000)} s. Verifique o modelo e a conexão com os serviços e inicie outra conversa.`); turn.controller.abort(); }, this.turnTimeoutMs);
     timeout.unref?.();
     try {
-      // Polly abre a conexão junto com o Bedrock para o handshake não somar à latência.
+      // A voz abre a conexão junto com o Bedrock para o handshake não somar à latência.
       await Promise.allSettled([this.generate(turn, n, sentences, signal), this.speak(turn, sentences, signal)]);
       if (turn.failure) throw turn.failure;
     } finally {
@@ -96,7 +96,8 @@ export class CascadeSession {
   async speak(turn, sentences, signal) {
     const aligner = new PcmAligner();
     try {
-      for await (const part of this.adapters.speak(sentences, this.config.cascade.pollyVoiceId, signal)) {
+      const voiceId = this.config.pipeline === 'elevenlabs' ? this.config.cascade.elevenVoiceId : this.config.cascade.pollyVoiceId;
+      for await (const part of this.adapters.speak(sentences, voiceId, signal)) {
         if (signal.aborted) break;
         if (part.characters !== undefined) { this.usage.ttsCharacters += part.characters; continue; }
         const pcm = aligner.push(part.audio);

@@ -88,6 +88,26 @@ Permissões usadas: `transcribe:StartStreamTranscription`, síntese do Polly (`p
 
 A única voz generativa em português brasileiro é **Camila**. Use fones: sem eles, a voz do Polly captada pelo microfone pode interromper a própria resposta.
 
+### Transcribe + Bedrock + ElevenLabs
+
+Terceira arquitetura: igual à do Polly, com a voz gerada pelo ElevenLabs (WebSocket `stream-input`, PCM 16 kHz, frase a frase). Detalhes em `docs/elevenlabs-cascade-design.md`.
+
+Crie uma conta (segundo a documentação pública do ElevenLabs, a free basta para testar, com 10 mil créditos por mês e 0,5 crédito por caractere no Flash v2.5; confirme na sua conta), gere uma chave de API e preencha o `.env`:
+
+```dotenv
+ELEVENLABS_API_KEY=<sua_chave>
+ELEVENLABS_MODEL_ID=eleven_flash_v2_5
+ELEVENLABS_VOICE_ID=<id_da_voz>
+```
+
+Use Flash ou Turbo v2.5 (recomendado): só os modelos v2.5 aceitam forçar o idioma (`language_code`), que o servidor envia apenas quando o ID do modelo contém `v2_5`. A chave fica só no servidor; a tela mostra apenas se ela está configurada. Para listar as vozes da conta e medir a latência:
+
+```powershell
+npm run probe:elevenlabs
+```
+
+Na tela, escolha **Transcribe + Bedrock + ElevenLabs**, use **Consultar vozes do ElevenLabs** e informe o ID da voz. O texto das respostas é enviado ao ElevenLabs, fora da AWS; na conta free não há direito de uso comercial.
+
 ## Usar
 
 1. Escolha uma imagem PNG, JPG ou WebP de até 5 MB e dê nome ao personagem.
@@ -110,7 +130,7 @@ Durante a conversa, a tela mostra duas medidas por turno (última, p50, p95 e qu
 
 A diferença entre as duas indica quanto do tempo vem do endpointing (`Espera entre turnos`) e do transporte.
 
-- Na arquitetura em cascata, "Latência do modelo" vai do fim do turno decidido pelo servidor até o primeiro áudio do Polly. A cabine também mostra, por turno, o tempo até o primeiro texto do Bedrock e o tempo entre a primeira frase e a primeira voz.
+- Na arquitetura em cascata, "Latência do modelo" vai do fim do turno decidido pelo servidor até o primeiro áudio da voz (Polly ou ElevenLabs). A cabine também mostra, por turno, o tempo até o primeiro texto do Bedrock e o tempo entre a primeira frase e a primeira voz.
 
 ## Arquivos e dados
 
@@ -120,8 +140,9 @@ A diferença entre as duas indica quanto do tempo vem do endpointing (`Espera en
 - `src/app.js`: HTTP e WebSocket, validação de acesso local.
 - `public/`: interface, AudioWorklet, reamostragem PCM, reprodução e métricas de latência (`metrics.js`).
 - `output/sonic-studio.html`: mockup original, preservado.
-- `src/cascade/`: arquitetura em cascata (`turn.js` fim de turno, frases e PCM; `aws.js` adaptadores de Transcribe, Bedrock e Polly; `session.js` orquestração).
+- `src/cascade/`: arquitetura em cascata (`turn.js` fim de turno, frases e PCM; `aws.js` adaptadores de Transcribe, Bedrock e Polly; `session.js` orquestração; `elevenlabs.js` voz e vozes do ElevenLabs).
 - `scripts/probe-cascade.js`: verificação de permissões e latências da cascata na conta.
+- `scripts/probe-elevenlabs.js`: verificação da chave, vozes, formato e latência do ElevenLabs.
 
 `schemaVersion: 1` identifica o formato. Os grupos `character`, `connection` e `conversation` contêm a imagem/identidade, modelo e parâmetros de voz respectivamente. Um arquivo salvo recebe `id`, `createdAt` e `updatedAt`. Perfil e região pertencem apenas ao `.env`.
 
