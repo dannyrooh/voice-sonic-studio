@@ -10,6 +10,7 @@ import { SonicSession } from './sonic.js';
 import { getAwsSettings } from './aws-settings.js';
 import { CascadeSession } from './cascade/session.js';
 import { createAwsAdapters } from './cascade/aws.js';
+import { elevenLabsSettings, createElevenLabsSpeaker, listElevenLabsVoices } from './cascade/elevenlabs.js';
 
 function localRequest(req) {
   const host = req.headers.host;
@@ -24,10 +25,14 @@ export async function listModels(connection) {
     return (result.modelSummaries || []).filter(m => /sonic/i.test(m.modelId)).map(m => ({ id: m.modelId, name: m.modelName }));
   } finally { client.destroy(); }
 }
-export function createSession(config, send, awsSettings) {
-  return config.pipeline === 'polly' ? new CascadeSession(config, send, createAwsAdapters(awsSettings)) : new SonicSession(config, send, awsSettings);
+export function createSession(config, send, awsSettings, elevenLabs = elevenLabsSettings()) {
+  if (config.pipeline === 'sonic') return new SonicSession(config, send, awsSettings);
+  if (config.pipeline === 'elevenlabs' && (!elevenLabs.apiKey || !elevenLabs.modelId)) throw new ValidationError('Defina ELEVENLABS_API_KEY e ELEVENLABS_MODEL_ID no .env e reinicie o servidor.');
+  const adapters = createAwsAdapters(awsSettings);
+  if (config.pipeline === 'elevenlabs') adapters.speak = createElevenLabsSpeaker({ ...elevenLabs, language: config.conversation.language });
+  return new CascadeSession(config, send, adapters);
 }
-export function createApplication({ dataDir = fileURLToPath(new URL('../data/configs/', import.meta.url)), awsSettings = getAwsSettings(), sessionFactory = createSession, modelsProvider = listModels } = {}) {
+export function createApplication({ dataDir = fileURLToPath(new URL('../data/configs/', import.meta.url)), awsSettings = getAwsSettings(), sessionFactory = createSession, modelsProvider = listModels, elevenLabs = elevenLabsSettings(), voicesProvider = listElevenLabsVoices } = {}) {
   const app = express(); const store = new ConfigStore(dataDir);
   app.disable('x-powered-by');
   app.use((req, res, next) => {
@@ -38,7 +43,7 @@ export function createApplication({ dataDir = fileURLToPath(new URL('../data/con
     next();
   });
   app.use(express.json({ limit: '8mb' }));
-  app.get('/api/bootstrap', (req, res) => res.json({ defaults: defaults(), voices: VOICES, pollyVoices: POLLY_VOICES, aws: awsSettings }));
+  app.get('/api/bootstrap', (req, res) => res.json({ defaults: defaults(), voices: VOICES, pollyVoices: POLLY_VOICES, aws: awsSettings, elevenLabs: { configured: Boolean(elevenLabs.apiKey), modelId: elevenLabs.modelId } }));
   app.get('/api/configs', async (req, res) => res.json(await store.list()));
   app.get('/api/configs/:id', async (req, res) => res.json(await store.get(req.params.id)));
   app.post('/api/configs', async (req, res) => res.status(201).json(await store.save(req.body)));
@@ -48,6 +53,11 @@ export function createApplication({ dataDir = fileURLToPath(new URL('../data/con
     validateConfig(req.body);
     try { res.json({ models: await modelsProvider(awsSettings) }); }
     catch (error) { res.status(502).json({ error: `Não foi possível consultar o Bedrock com o perfil ${awsSettings.awsProfile}: ${error.message}` }); }
+  });
+  app.post('/api/elevenlabs/voices', async (req, res) => {
+    if (!elevenLabs.apiKey) throw new ValidationError('Defina ELEVENLABS_API_KEY no .env e reinicie o servidor.');
+    try { res.json({ voices: await voicesProvider(elevenLabs) }); }
+    catch (error) { res.status(502).json({ error: `Não foi possível consultar as vozes do ElevenLabs: ${error.message}` }); }
   });
   app.use(express.static(fileURLToPath(new URL('../public/', import.meta.url))));
   app.use((error, req, res, next) => {
@@ -83,7 +93,7 @@ export function createApplication({ dataDir = fileURLToPath(new URL('../data/con
           const config = validateConfig(message.config, { requireModel: true });
           // A imagem pertence apenas à interface e nunca é enviada ao Bedrock.
           config.character.avatar = null;
-          session = sessionFactory(config, send, awsSettings);
+          session = sessionFactory(config, send, awsSettings, elevenLabs);
           Promise.resolve(session.start()).then(() => {
             session?.abort(); if (ws.readyState === WebSocket.OPEN) { send({ type: 'ended' }); ws.close(); }
           }).catch(error => { if (!stopping && ws.readyState === WebSocket.OPEN) fail(error); });

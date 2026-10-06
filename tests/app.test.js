@@ -110,3 +110,28 @@ test('Polly pipeline needs a Bedrock text model before creating a session', asyn
   assert.equal(created, false);
   ws.close();
 });
+
+test('ElevenLabs sessions need the key in .env and replace only the speaker', () => {
+  const aws = { awsProfile: 'p', region: 'us-east-1' };
+  const config = validateConfig({ ...defaults(), pipeline: 'elevenlabs', cascade: { llmModelId: 'us.amazon.nova-micro-v1:0', pollyVoiceId: 'Camila', elevenVoiceId: 'voz123' } }, { requireModel: true });
+  assert.throws(() => createSession(config, () => {}, aws, { apiKey: '', modelId: 'eleven_flash_v2_5' }), /ELEVENLABS_API_KEY/);
+  const session = createSession(config, () => {}, aws, { apiKey: 'chave', modelId: 'eleven_flash_v2_5' });
+  assert.ok(session instanceof CascadeSession);
+  assert.equal(session.adapters.speak.name, 'speakWithElevenLabs');
+  assert.equal(typeof session.adapters.transcribe, 'function');
+  session.abort();
+});
+test('bootstrap reports ElevenLabs readiness without the key and voices are listed by the server', async t => {
+  let used;
+  const url = await fixture(t, { elevenLabs: { apiKey: 'segredo', modelId: 'eleven_flash_v2_5' }, voicesProvider: async settings => { used = settings; return [{ id: 'abc', name: 'Bia', label: 'Bia' }]; } });
+  const bootstrap = await (await fetch(`${url}/api/bootstrap`)).text();
+  assert.equal(bootstrap.includes('segredo'), false);
+  assert.deepEqual(JSON.parse(bootstrap).elevenLabs, { configured: true, modelId: 'eleven_flash_v2_5' });
+  const response = await fetch(`${url}/api/elevenlabs/voices`, { method: 'POST' });
+  assert.deepEqual(await response.json(), { voices: [{ id: 'abc', name: 'Bia', label: 'Bia' }] });
+  assert.equal(used.apiKey, 'segredo');
+  const missing = await fixture(t, { elevenLabs: { apiKey: '', modelId: '' } });
+  const refused = await fetch(`${missing}/api/elevenlabs/voices`, { method: 'POST' });
+  assert.equal(refused.status, 400);
+  assert.match((await refused.json()).error, /ELEVENLABS_API_KEY/);
+});

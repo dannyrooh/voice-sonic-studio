@@ -147,3 +147,14 @@ test('audio rejects invalid PCM chunks', () => {
   assert.throws(() => s.audio('x'), /PCM/);
   assert.throws(() => s.audio(Buffer.alloc(8194)), /PCM/);
 });
+
+test('ElevenLabs pipeline speaks with the ElevenLabs voice', async () => {
+  let clock = 0; const a = fakeAdapters();
+  const c = validateConfig({ ...defaults(), pipeline: 'elevenlabs', cascade: { llmModelId: 'us.amazon.nova-micro-v1:0', pollyVoiceId: 'Camila', elevenVoiceId: 'voz123' } }, { requireModel: true });
+  const s = new CascadeSession(c, () => {}, a, { now: () => clock, pollMs: 1e6 });
+  const running = s.start();
+  s.audio(loud()); a.results.push({ id: 'r1', text: 'Oi', partial: false }); await flush();
+  clock = 1000; s.poll(); await s.pending;
+  assert.equal(a.calls.speak[0].voiceId, 'voz123');
+  s.stop(); await running; s.abort();
+});
