@@ -51,7 +51,7 @@ test('legacy files open as Sonic and each pipeline requires its own model', () =
   assert.throws(() => validateConfig(polly, { requireModel: true }), /modelo de texto/i);
   const ready = validateConfig({ ...polly, cascade: { llmModelId: ' us.amazon.nova-2-lite-v1:0 ', pollyVoiceId: 'Camila' } }, { requireModel: true });
   assert.equal(ready.connection.modelId, '');
-  assert.deepEqual(ready.cascade, { llmModelId: 'us.amazon.nova-2-lite-v1:0', pollyVoiceId: 'Camila' });
+  assert.deepEqual(ready.cascade, { llmModelId: 'us.amazon.nova-2-lite-v1:0', pollyVoiceId: 'Camila', elevenVoiceId: '' });
   assert.throws(() => validateConfig({ ...defaults(), connection: { modelId: '' } }, { requireModel: true }), /identificador do modelo/i);
 });
 
@@ -60,4 +60,17 @@ test('Polly pipeline does not require the hidden Sonic voice', () => {
   polly.conversation = { ...polly.conversation, voiceId: '' };
   assert.equal(validateConfig(polly, { requireModel: true }).conversation.voiceId, '');
   assert.throws(() => validateConfig({ ...defaults(), conversation: { ...defaults().conversation, voiceId: '' } }), /voz/i);
+});
+
+test('ElevenLabs pipeline needs text model and voice; Polly-era files stay valid', () => {
+  const pollyEra = { ...defaults(), pipeline: 'polly', cascade: { llmModelId: 'us.amazon.nova-2-lite-v1:0', pollyVoiceId: 'Camila' } };
+  assert.equal(validateConfig(pollyEra, { requireModel: true }).cascade.elevenVoiceId, '');
+  const eleven = { ...defaults(), pipeline: 'elevenlabs', conversation: { ...defaults().conversation, voiceId: '' }, cascade: { llmModelId: 'us.amazon.nova-micro-v1:0', pollyVoiceId: 'Camila', elevenVoiceId: '' } };
+  assert.throws(() => validateConfig(eleven, { requireModel: true }), /voz do elevenlabs/i);
+  assert.throws(() => validateConfig({ ...eleven, cascade: { ...eleven.cascade, llmModelId: '' } }, { requireModel: true }), /modelo de texto/i);
+  const ready = validateConfig({ ...eleven, cascade: { ...eleven.cascade, elevenVoiceId: ' 21m00Tcm4TlvDq8ikWAM ' } }, { requireModel: true });
+  assert.equal(ready.pipeline, 'elevenlabs');
+  assert.equal(ready.cascade.elevenVoiceId, '21m00Tcm4TlvDq8ikWAM');
+  assert.equal(ready.conversation.voiceId, '');
+  assert.throws(() => validateConfig({ ...eleven, cascade: { ...eleven.cascade, apiKey: 'segredo' } }), /campo/i);
 });

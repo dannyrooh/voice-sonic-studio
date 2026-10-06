@@ -5,7 +5,8 @@ export const VOICES = [
   { id: 'tiffany', label: 'Tiffany · Poliglota' },
   { id: 'matthew', label: 'Matthew · Poliglota' },
 ];
-export const PIPELINES = ['sonic', 'polly'];
+export const PIPELINES = ['sonic', 'polly', 'elevenlabs'];
+const CASCADE_PIPELINES = ['polly', 'elevenlabs'];
 export const POLLY_VOICES = [{ id: 'Camila', label: 'Camila · Português brasileiro (generativa)' }];
 export function defaults() {
   return {
@@ -16,7 +17,7 @@ export function defaults() {
     connection: {
       modelId: process.env.SONIC_MODEL_ID || '',
     },
-    cascade: { llmModelId: process.env.CASCADE_LLM_MODEL_ID || '', pollyVoiceId: 'Camila' },
+    cascade: { llmModelId: process.env.CASCADE_LLM_MODEL_ID || '', pollyVoiceId: 'Camila', elevenVoiceId: process.env.ELEVENLABS_VOICE_ID || '' },
     conversation: {
       voiceId: 'carolina', language: 'pt-BR',
       systemPrompt: 'Você é Aurora, uma assistente comercial cordial. Converse com respostas curtas e claras. Faça uma pergunta de cada vez e confirme valores e nomes quando necessário.',
@@ -66,9 +67,9 @@ export function validateConfig(input, { requireModel = false } = {}) {
   if (!PIPELINES.includes(pipeline)) fail('Arquitetura inválida.');
   object(input.character, ['name', 'avatar'], 'personagem');
   object(input.connection, ['awsProfile', 'region', 'modelId'], 'conexão');
-  // Arquivos anteriores à arquitetura em cascata não têm o grupo cascade.
-  const cascade = input.cascade ?? defaults().cascade;
-  object(cascade, ['llmModelId', 'pollyVoiceId'], 'cascata');
+  if (input.cascade !== undefined) object(input.cascade, ['llmModelId', 'pollyVoiceId', 'elevenVoiceId'], 'cascata');
+  // Arquivos anteriores não têm o grupo cascade ou a voz do ElevenLabs.
+  const cascade = { ...defaults().cascade, ...input.cascade };
   object(input.conversation, ['voiceId', 'language', 'systemPrompt', 'endpointingSensitivity', 'allowInterruption', 'temperature', 'topP', 'maxTokens'], 'conversa');
   const connection = {
     modelId: string(input.connection.modelId, 'Identificador do modelo', 200, !(requireModel && pipeline === 'sonic')),
@@ -83,11 +84,12 @@ export function validateConfig(input, { requireModel = false } = {}) {
     character: { name: string(input.character.name, 'Nome do personagem', 80), avatar: validateAvatar(input.character.avatar) },
     connection,
     cascade: {
-      llmModelId: string(cascade.llmModelId, 'Modelo de texto', 200, !(requireModel && pipeline === 'polly')),
+      llmModelId: string(cascade.llmModelId, 'Modelo de texto', 200, !(requireModel && CASCADE_PIPELINES.includes(pipeline))),
       pollyVoiceId: string(cascade.pollyVoiceId, 'Voz do Polly', 40),
+      elevenVoiceId: string(cascade.elevenVoiceId, 'Voz do ElevenLabs', 64, !(requireModel && pipeline === 'elevenlabs')),
     },
     conversation: {
-      voiceId: string(c.voiceId, 'Identificador da voz', 80, pipeline === 'polly'), language: c.language,
+      voiceId: string(c.voiceId, 'Identificador da voz', 80, pipeline !== 'sonic'), language: c.language,
       systemPrompt: string(c.systemPrompt, 'Instruções', 12000),
       endpointingSensitivity: c.endpointingSensitivity, allowInterruption: c.allowInterruption,
       temperature: number(c.temperature, 0, 1, 'Temperatura'),
