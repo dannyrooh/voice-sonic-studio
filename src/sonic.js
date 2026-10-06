@@ -6,6 +6,9 @@ import { validateConfig, ValidationError } from './config.js';
 
 const event = (type, data) => ({ event: { [type]: data } });
 const languages = { 'pt-BR': 'português brasileiro', 'en-US': 'inglês', es: 'espanhol', fr: 'francês', de: 'alemão', it: 'italiano', hi: 'hindi' };
+export function systemText(config) {
+  return `Seu nome é ${config.character.name}. Responda em ${languages[config.conversation.language]}.\n${config.conversation.systemPrompt}`;
+}
 export class SonicProtocol {
   constructor(config) {
     this.config = validateConfig(config, { requireModel: true });
@@ -24,7 +27,7 @@ export class SonicProtocol {
         audioOutputConfiguration: { mediaType: 'audio/lpcm', sampleRateHertz: 24000, sampleSizeBits: 16, channelCount: 1, voiceId: c.voiceId, encoding: 'base64', audioType: 'SPEECH' },
       }),
       event('contentStart', { promptName: this.promptName, contentName: this.textName, type: 'TEXT', interactive: false, role: 'SYSTEM', textInputConfiguration: { mediaType: 'text/plain' } }),
-      event('textInput', { promptName: this.promptName, contentName: this.textName, content: `Seu nome é ${this.config.character.name}. Responda em ${languages[c.language]}.\n${c.systemPrompt}` }),
+      event('textInput', { promptName: this.promptName, contentName: this.textName, content: systemText(this.config) }),
       event('contentEnd', { promptName: this.promptName, contentName: this.textName }),
       event('contentStart', { promptName: this.promptName, contentName: this.audioName, type: 'AUDIO', interactive: true, role: 'USER', audioInputConfiguration: { mediaType: 'audio/lpcm', sampleRateHertz: 16000, sampleSizeBits: 16, channelCount: 1, audioType: 'SPEECH', encoding: 'base64' } }),
     ];
