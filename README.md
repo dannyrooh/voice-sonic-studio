@@ -81,13 +81,22 @@ A imagem é usada apenas na interface e fica embutida em base64 no JSON. Não é
 
 Alterações feitas durante uma conversa entram em vigor na próxima sessão. Desativar interrupções silencia o áudio enviado pelo microfone durante a reprodução da resposta; esse controle é implementado no cliente, não como parâmetro inventado da API.
 
+### Latência
+
+Durante a conversa, a tela mostra duas medidas por turno (última, p50, p95 e quantidade), zeradas a cada nova conversa:
+
+- **Latência percebida**: medida no navegador, do último trecho de 32 ms com voz no microfone (RMS ≥ 0,02) até o início da reprodução da resposta. Inclui espera de fim de turno, rede, modelo e buffer de reprodução. A resolução é de ~32 ms. Ruído de fundo forte ou eco sem fones antecipam o "fim da fala" e reduzem o valor medido.
+- **Latência do modelo**: medida no servidor, do fim do bloco de transcrição do usuário (turno detectado pelo Sonic) até o primeiro `audioOutput`. Exclui a espera de fim de turno e a rede até o navegador.
+
+A diferença entre as duas indica quanto do tempo vem do endpointing (`Espera entre turnos`) e do transporte.
+
 ## Arquivos e dados
 
 - `src/config.js`: defaults e validação do formato.
 - `src/store.js`: persistência em `data/configs/<uuid>.json`, escrita temporária seguida de rename.
 - `src/sonic.js`: protocolo, fila limitada, integração AWS e roteamento de áudio/transcrições.
 - `src/app.js`: HTTP e WebSocket, validação de acesso local.
-- `public/`: interface, AudioWorklet, reamostragem PCM e reprodução.
+- `public/`: interface, AudioWorklet, reamostragem PCM, reprodução e métricas de latência (`metrics.js`).
 - `output/sonic-studio.html`: mockup original, preservado.
 
 `schemaVersion: 1` identifica o formato. Os grupos `character`, `connection` e `conversation` contêm a imagem/identidade, modelo e parâmetros de voz respectivamente. Um arquivo salvo recebe `id`, `createdAt` e `updatedAt`. Perfil e região pertencem apenas ao `.env`.
