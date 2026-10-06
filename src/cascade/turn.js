@@ -5,16 +5,23 @@ export const ENDPOINT_MS = { HIGH: 400, MEDIUM: 700, LOW: 1100 };
 
 // O final do Transcribe chega ~1,5 s após a fala; o turno termina antes, por silêncio e texto parcial estável.
 export class TurnDetector {
-  constructor(endpointMs, settleMs = 250) { this.endpointMs = endpointMs; this.settleMs = settleMs; this.answered = new Set(); this.clear(); }
-  clear() { this.segments = new Map(); this.lastVoiceAt = null; this.lastTextAt = null; }
+  constructor(endpointMs, settleMs = 250) { this.endpointMs = endpointMs; this.settleMs = settleMs; this.answered = new Map(); this.clear(); }
+  clear() { this.segments = new Map(); this.full = new Map(); this.lastVoiceAt = null; this.lastTextAt = null; }
   audio(bytes, now) {
     const voiced = voiceLevel(Uint8Array.from(bytes).buffer) >= VOICE_THRESHOLD;
     if (voiced) this.lastVoiceAt = now;
     return voiced;
   }
   transcript(id, text, now) {
-    if (this.answered.has(id)) return false;
-    this.segments.set(id, text); this.lastTextAt = now;
+    const words = value => value.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/).filter(Boolean).length;
+    let fresh = text;
+    if (this.answered.has(id)) {
+      // Fala retomada dentro de um ResultId já respondido: só as palavras novas no fim contam.
+      const before = words(this.answered.get(id)); const all = text.split(/\s+/).filter(Boolean);
+      if (words(text) <= before) return false;
+      fresh = all.slice(before).join(' ');
+    }
+    this.segments.set(id, fresh); this.full.set(id, text); this.lastTextAt = now;
     return true;
   }
   get text() { return [...this.segments.values()].join(' ').trim(); }
@@ -23,7 +30,7 @@ export class TurnDetector {
     if (!text) return null;
     const silenceSince = this.lastVoiceAt ?? this.lastTextAt;
     if (now - silenceSince < this.endpointMs || now - this.lastTextAt < this.settleMs) return null;
-    for (const id of this.segments.keys()) this.answered.add(id);
+    for (const id of this.segments.keys()) this.answered.set(id, this.full.get(id));
     this.clear();
     return text;
   }

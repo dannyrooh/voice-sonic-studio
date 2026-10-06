@@ -36,3 +36,15 @@ test('PCM aligner keeps 16-bit samples whole across chunks', () => {
   assert.deepEqual([...p.push(Uint8Array.of(4))], [3, 4]);
   assert.equal(p.push(Uint8Array.of()).length, 0);
 });
+
+test('speech resumed inside an answered result id counts only the new trailing words', () => {
+  const d = new TurnDetector(700, 250);
+  d.audio(loud(), 0); d.transcript('a', 'Quero saber o prazo', 50);
+  assert.equal(d.poll(1000), 'Quero saber o prazo');
+  d.audio(loud(), 1100);
+  assert.equal(d.transcript('a', 'Quero saber o prazo de entrega', 1200), true);
+  assert.equal(d.text, 'de entrega');
+  assert.equal(d.poll(2500), 'de entrega');
+  assert.equal(d.transcript('a', 'Quero saber o prazo de entrega.', 3000), false, 'final com pontuação');
+  assert.equal(d.poll(5000), null);
+});

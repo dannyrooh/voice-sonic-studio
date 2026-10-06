@@ -112,3 +112,19 @@ test('Bedrock failure ends the session with the original error', async () => {
   await assert.rejects(running, /AccessDenied/);
   s.abort();
 });
+
+test('speech resumed inside an answered result id interrupts and is answered alone', async () => {
+  let clock = 0; const sent = []; let release; const gate = new Promise(resolve => { release = resolve; });
+  const a = fakeAdapters({ replies: [['Primeira parte da resposta. ', () => gate, 'nunca dita.'], ['Certo.']] });
+  const s = new CascadeSession(config(), m => sent.push(m), a, { now: () => clock, pollMs: 1e6 });
+  const running = s.start();
+  s.audio(loud()); a.results.push({ id: 'r1', text: 'Quero saber o prazo', partial: true }); await flush();
+  clock = 1000; s.poll(); await flush();
+  assert.ok(s.turn);
+  clock = 1100; s.audio(loud()); a.results.push({ id: 'r1', text: 'Quero saber o prazo de entrega', partial: true }); await flush();
+  assert.equal(sent.filter(m => m.type === 'interrupted').length, 1);
+  release(); await s.pending;
+  clock = 2500; s.poll(); await s.pending;
+  assert.deepEqual(a.calls.reply[1].messages.at(-1), { role: 'user', content: [{ text: 'de entrega' }] });
+  s.stop(); await running; s.abort();
+});
