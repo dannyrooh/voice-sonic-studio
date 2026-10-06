@@ -10,11 +10,14 @@
     "start": "node --env-file-if-exists=.env src/server.js",
     "dev": "node --env-file-if-exists=.env --watch src/server.js",
     "test": "node --test",
-    "check": "node scripts/check.js"
+    "check": "node scripts/check.js",
+    "probe:cascade": "node --env-file-if-exists=.env scripts/probe-cascade.js"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock": "^3.0.0",
     "@aws-sdk/client-bedrock-runtime": "^3.0.0",
+    "@aws-sdk/client-polly": "^3.1146.0",
+    "@aws-sdk/client-transcribe-streaming": "^3.1146.0",
     "@aws-sdk/credential-providers": "^3.0.0",
     "@smithy/node-http-handler": "^4.12.1",
     "express": "^5.1.0",

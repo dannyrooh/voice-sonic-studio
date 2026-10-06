@@ -39,3 +39,25 @@ test('rejects malformed fields, unsupported schema, fake images, oversized image
   const huge = 'data:image/png;base64,' + Buffer.concat([Buffer.from('89504e470d0a1a0a', 'hex'), Buffer.alloc(5 * 1024 * 1024)]).toString('base64');
   assert.throws(() => validateConfig({ ...defaults(), character: { name: 'A', avatar: { fileName: 'x.png', mimeType: 'image/png', dataUrl: huge } } }), /5 MB/i);
 });
+
+test('legacy files open as Sonic and each pipeline requires its own model', () => {
+  const legacy = defaults(); delete legacy.pipeline; delete legacy.cascade;
+  const loaded = validateConfig(legacy);
+  assert.equal(loaded.pipeline, 'sonic');
+  assert.equal(loaded.cascade.pollyVoiceId, 'Camila');
+  assert.throws(() => validateConfig({ ...defaults(), pipeline: 'gpt' }), /arquitetura/i);
+  assert.throws(() => validateConfig({ ...defaults(), cascade: { ...defaults().cascade, apiKey: 'x' } }), /campo/i);
+  const polly = { ...defaults(), pipeline: 'polly', connection: { modelId: '' }, cascade: { llmModelId: '', pollyVoiceId: 'Camila' } };
+  assert.throws(() => validateConfig(polly, { requireModel: true }), /modelo de texto/i);
+  const ready = validateConfig({ ...polly, cascade: { llmModelId: ' us.amazon.nova-2-lite-v1:0 ', pollyVoiceId: 'Camila' } }, { requireModel: true });
+  assert.equal(ready.connection.modelId, '');
+  assert.deepEqual(ready.cascade, { llmModelId: 'us.amazon.nova-2-lite-v1:0', pollyVoiceId: 'Camila' });
+  assert.throws(() => validateConfig({ ...defaults(), connection: { modelId: '' } }, { requireModel: true }), /identificador do modelo/i);
+});
+
+test('Polly pipeline does not require the hidden Sonic voice', () => {
+  const polly = { ...defaults(), pipeline: 'polly', cascade: { llmModelId: 'us.amazon.nova-2-lite-v1:0', pollyVoiceId: 'Camila' } };
+  polly.conversation = { ...polly.conversation, voiceId: '' };
+  assert.equal(validateConfig(polly, { requireModel: true }).conversation.voiceId, '');
+  assert.throws(() => validateConfig({ ...defaults(), conversation: { ...defaults().conversation, voiceId: '' } }), /voz/i);
+});

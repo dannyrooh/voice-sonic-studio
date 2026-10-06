@@ -38,6 +38,7 @@ h1, h2, h3, p, dl, dd { margin: 0; }
 h1, h2, h3 { font-family: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -0.01em; }
 button, input, select, textarea { font: inherit; color: inherit; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+[hidden] { display: none !important; }
 
 /* Botões */
 button, .button {

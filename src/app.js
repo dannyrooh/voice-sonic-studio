@@ -5,9 +5,11 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { BedrockClient, ListFoundationModelsCommand } from '@aws-sdk/client-bedrock';
 import { fromIni } from '@aws-sdk/credential-providers';
 import { ConfigStore } from './store.js';
-import { defaults, validateConfig, ValidationError, VOICES } from './config.js';
+import { defaults, validateConfig, ValidationError, VOICES, POLLY_VOICES } from './config.js';
 import { SonicSession } from './sonic.js';
 import { getAwsSettings } from './aws-settings.js';
+import { CascadeSession } from './cascade/session.js';
+import { createAwsAdapters } from './cascade/aws.js';
 
 function localRequest(req) {
   const host = req.headers.host;
@@ -22,7 +24,10 @@ export async function listModels(connection) {
     return (result.modelSummaries || []).filter(m => /sonic/i.test(m.modelId)).map(m => ({ id: m.modelId, name: m.modelName }));
   } finally { client.destroy(); }
 }
-export function createApplication({ dataDir = fileURLToPath(new URL('../data/configs/', import.meta.url)), awsSettings = getAwsSettings(), sessionFactory = (c, send, aws) => new SonicSession(c, send, aws), modelsProvider = listModels } = {}) {
+export function createSession(config, send, awsSettings) {
+  return config.pipeline === 'polly' ? new CascadeSession(config, send, createAwsAdapters(awsSettings)) : new SonicSession(config, send, awsSettings);
+}
+export function createApplication({ dataDir = fileURLToPath(new URL('../data/configs/', import.meta.url)), awsSettings = getAwsSettings(), sessionFactory = createSession, modelsProvider = listModels } = {}) {
   const app = express(); const store = new ConfigStore(dataDir);
   app.disable('x-powered-by');
   app.use((req, res, next) => {
@@ -33,7 +38,7 @@ export function createApplication({ dataDir = fileURLToPath(new URL('../data/con
     next();
   });
   app.use(express.json({ limit: '8mb' }));
-  app.get('/api/bootstrap', (req, res) => res.json({ defaults: defaults(), voices: VOICES, aws: awsSettings }));
+  app.get('/api/bootstrap', (req, res) => res.json({ defaults: defaults(), voices: VOICES, pollyVoices: POLLY_VOICES, aws: awsSettings }));
   app.get('/api/configs', async (req, res) => res.json(await store.list()));
   app.get('/api/configs/:id', async (req, res) => res.json(await store.get(req.params.id)));
   app.post('/api/configs', async (req, res) => res.status(201).json(await store.save(req.body)));

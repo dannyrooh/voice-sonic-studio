@@ -68,6 +68,26 @@ O projeto implementa o protocolo bidirecional documentado para Nova 2 Sonic, com
 
 Para **Nova 2.5 Sonic**, a consulta real na conta confirmou `amazon.nova-2-5-sonic` em `us-east-1`. Ele foi definido em `SONIC_MODEL_ID` no `.env`, tornando-se o valor inicial das novas configurações. A compatibilidade do protocolo e das vozes com 2.5 precisa ser validada com uma conversa real.
 
+### Transcribe + Bedrock + Polly
+
+Segunda arquitetura da comparação. Escolha **Arquitetura: Transcribe + Bedrock + Polly** na tela. A fala vai ao Transcribe Streaming, o servidor decide o fim do turno pelo silêncio do microfone (Rápida 400 ms, Equilibrada 700 ms, Paciente 1100 ms), o texto vai ao Bedrock (`ConverseStream`) e a resposta é falada pelo Polly generativo em PCM 16 kHz, frase a frase. Detalhes e medições em `docs/polly-cascade-design.md`.
+
+Defina o modelo de texto padrão no `.env`:
+
+```dotenv
+CASCADE_LLM_MODEL_ID=us.amazon.nova-2-lite-v1:0
+```
+
+Confira permissões e latências da conta sem abrir a interface:
+
+```powershell
+npm run probe:cascade
+```
+
+Permissões usadas: `transcribe:StartStreamTranscription`, síntese do Polly (`polly:SynthesizeSpeech` e o streaming bidirecional) e `bedrock:InvokeModelWithResponseStream` no inference profile escolhido e nos modelos de base dele. A ação IAM exata do streaming do Polly ainda não foi confirmada com um perfil restrito.
+
+A única voz generativa em português brasileiro é **Camila**. Use fones: sem eles, a voz do Polly captada pelo microfone pode interromper a própria resposta.
+
 ## Usar
 
 1. Escolha uma imagem PNG, JPG ou WebP de até 5 MB e dê nome ao personagem.
@@ -90,6 +110,8 @@ Durante a conversa, a tela mostra duas medidas por turno (última, p50, p95 e qu
 
 A diferença entre as duas indica quanto do tempo vem do endpointing (`Espera entre turnos`) e do transporte.
 
+- Na arquitetura em cascata, "Latência do modelo" vai do fim do turno decidido pelo servidor até o primeiro áudio do Polly. A cabine também mostra, por turno, o tempo até o primeiro texto do Bedrock e o tempo entre a primeira frase e a primeira voz.
+
 ## Arquivos e dados
 
 - `src/config.js`: defaults e validação do formato.
@@ -98,6 +120,8 @@ A diferença entre as duas indica quanto do tempo vem do endpointing (`Espera en
 - `src/app.js`: HTTP e WebSocket, validação de acesso local.
 - `public/`: interface, AudioWorklet, reamostragem PCM, reprodução e métricas de latência (`metrics.js`).
 - `output/sonic-studio.html`: mockup original, preservado.
+- `src/cascade/`: arquitetura em cascata (`turn.js` fim de turno, frases e PCM; `aws.js` adaptadores de Transcribe, Bedrock e Polly; `session.js` orquestração).
+- `scripts/probe-cascade.js`: verificação de permissões e latências da cascata na conta.
 
 `schemaVersion: 1` identifica o formato. Os grupos `character`, `connection` e `conversation` contêm a imagem/identidade, modelo e parâmetros de voz respectivamente. Um arquivo salvo recebe `id`, `createdAt` e `updatedAt`. Perfil e região pertencem apenas ao `.env`.
 
