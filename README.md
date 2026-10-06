@@ -1,35 +1,189 @@
-# Sonic Studio
+<p align="center">
+  <img src="docs/assets/banner.jpg" alt="Microfone de estúdio emitindo três ondas de áudio coloridas, uma por arquitetura de voz, que chegam a um balão de fala" width="100%">
+</p>
 
-POC local de conversa com Amazon Nova Sonic no Bedrock. Interface em português baseada no mockup, com imagem do personagem, parâmetros de voz, biblioteca de configurações JSON e microfone em tempo real.
+<h1 align="center">Voice Lab · Comparador de Voz com IA na AWS</h1>
 
-## Executar no Windows
+<p align="center">
+  <strong>Escolha a voz do seu assistente com dados, não com promessa de fornecedor.</strong><br>
+  Nova Sonic, Polly e ElevenLabs lado a lado: mesmo personagem, mesmas instruções, latência medida em milissegundos.
+</p>
 
-Requer Node.js 22 ou mais recente e navegador moderno com AudioWorklet (Chrome/Edge recomendado).
+<p align="center">
+  <img alt="Node.js 22+" src="https://img.shields.io/badge/Node.js-22%2B-339933?logo=nodedotjs&logoColor=white">
+  <img alt="Amazon Bedrock" src="https://img.shields.io/badge/Amazon-Bedrock-232F3E?logo=amazonwebservices&logoColor=white">
+  <img alt="Nova Sonic" src="https://img.shields.io/badge/Nova-Sonic-2FB38A">
+  <img alt="Amazon Polly" src="https://img.shields.io/badge/Amazon-Polly-6AA7F0">
+  <img alt="ElevenLabs" src="https://img.shields.io/badge/ElevenLabs-Flash%20v2.5-E0A526">
+  <img alt="Interface em português" src="https://img.shields.io/badge/interface-pt--BR-18212C">
+</p>
 
-```powershell
-cd C:\workspace-dannytooh\nova-sonic
-npm ci
-# Apenas se o .env ainda não existir:
-if (-not (Test-Path .env)) { Copy-Item .env.example .env }
-npm start
+---
+
+## Por que o Voice Lab existe
+
+Escolher a voz de um assistente comercial não é só escolher um timbre. A arquitetura decide **quanto o cliente espera** depois de falar, **quão natural** a resposta soa e **quanto trabalho** dá para manter tudo funcionando. Essas três coisas brigam entre si, e a documentação de cada fornecedor só conta a própria versão.
+
+O Voice Lab coloca as três opções lado a lado, no seu computador e com a sua conta AWS. Você conversa com o mesmo personagem nas três arquiteturas e a tela mede cada resposta em milissegundos. A decisão passa a ser baseada em números, não em promessa de fornecedor.
+
+## O que você ganha
+
+- **Comparação justa.** Personagem, instruções, idioma, espera entre turnos e parâmetros de geração são os mesmos nas três arquiteturas. Só a arquitetura muda.
+- **Métricas por resposta.** Latência percebida e latência do modelo (última, p50 e p95), tokens e caracteres de voz, direto na cabine de conversa.
+- **Conversa de verdade.** Microfone em tempo real, transcrição dos dois lados e interrupção: você pode falar por cima da resposta.
+- **Personagens reutilizáveis.** Imagem, nome, voz e personalidade salvos em JSON, com biblioteca, importação e exportação.
+- **Seguro por padrão.** Roda só em `localhost`, credenciais e chaves ficam no servidor, nenhum áudio é gravado.
+- **Pronto para medir a conta.** Scripts `probe` verificam permissões e latências na AWS e no ElevenLabs sem abrir a tela.
+
+<p align="center">
+  <img src="docs/assets/tela.png" alt="Tela do Voice Lab: painel do personagem, painel de voz e comportamento com o seletor de arquitetura, e a cabine de conversa com as métricas de latência" width="100%">
+</p>
+
+## Entenda as três arquiteturas
+
+Toda conversa por voz resolve três problemas: **entender** o que a pessoa disse, **decidir** o que responder e **falar** a resposta. As arquiteturas diferem em quem faz cada parte.
+
+### 1. Nova Sonic: fala para fala
+
+Um único modelo ouve, pensa e fala. É como um intérprete simultâneo: ninguém precisa passar o recado adiante, então a resposta tende a sair mais rápido e com entonação coerente com o que foi dito.
+
+```mermaid
+flowchart LR
+  M[Microfone] -->|áudio 16 kHz| S[Amazon Nova Sonic<br/>ouve, pensa e fala]
+  S -->|áudio 24 kHz| A[Alto-falante]
 ```
 
-Abra **http://localhost:3000**. A aplicação escuta somente em `127.0.0.1`. Para mudar a porta, defina `PORT` no `.env`. Não precisa de build ou banco de dados.
+### 2. Transcribe + Bedrock + Polly: cascata AWS
 
-## Configurar a AWS
+Três serviços especializados em sequência, como uma equipe: um transcreve, outro redige a resposta, outro lê em voz alta. Cada peça pode ser trocada sozinha, e o texto da resposta fica visível no meio do caminho.
 
-Perfil e região são lidos exclusivamente do **`.env` na raiz**:
-
-```dotenv
-AWS_PROFILE=<seu_profile>
-AWS_REGION=us-east-1
-PORT=3000
-SONIC_MODEL_ID=amazon.nova-2-5-sonic
+```mermaid
+flowchart LR
+  M[Microfone] --> T[Amazon Transcribe<br/>fala vira texto]
+  T --> F{Fim da fala?<br/>silêncio no microfone}
+  F --> B[Amazon Bedrock<br/>escreve a resposta]
+  B -->|frase a frase| P[Amazon Polly<br/>voz generativa Camila]
+  P --> A[Alto-falante]
 ```
 
-Reinicie o servidor após alterar esse arquivo. Perfil e região aparecem na tela apenas para consulta e não fazem parte das configurações JSON. Valores desses campos em arquivos antigos são ignorados ao carregar/importar, e retirados ao salvar/exportar novamente.
+### 3. Transcribe + Bedrock + ElevenLabs: cascata com voz premium
 
-Configure o perfil usando o método de autenticação da sua organização, por exemplo:
+A mesma equipe da cascata AWS, com outro locutor: a voz vem do ElevenLabs, conhecido pela naturalidade. O texto da resposta sai da AWS para o ElevenLabs.
+
+```mermaid
+flowchart LR
+  M[Microfone] --> T[Amazon Transcribe]
+  T --> F{Fim da fala?}
+  F --> B[Amazon Bedrock]
+  B -->|frase a frase| E[ElevenLabs<br/>Flash v2.5]
+  E --> A[Alto-falante]
+```
+
+### Lado a lado
+
+| | Nova Sonic | Transcribe + Bedrock + Polly | Transcribe + Bedrock + ElevenLabs |
+|---|---|---|---|
+| **Como funciona** | Um modelo de fala para fala | Três serviços AWS em cascata | Cascata AWS com voz do ElevenLabs |
+| **Vozes em pt-BR** | Carolina e Leo (documentadas no Nova 2) | Camila, a única voz generativa pt-BR da conta | Vozes da biblioteca da sua conta |
+| **Onde os dados ficam** | AWS | AWS | Texto da resposta vai ao ElevenLabs |
+| **Flexibilidade** | Modelo fixo | Troca o modelo de texto (Nova Micro, Nova 2 Lite, Claude Haiku 4.5) | Troca modelo de texto e voz |
+| **O que já foi medido na conta** | A medir na primeira conversa real | Primeira voz do Polly em 814 ms; primeiro texto do Nova 2 Lite em 887 ms; fim da transcrição 1,5 s após a fala | A medir quando a chave for configurada |
+| **Latência percebida esperada** | A medir | 2,0 a 2,5 s (estimativa a partir das etapas) | A medir |
+
+As medições da cascata AWS estão em [docs/polly-cascade-design.md](docs/polly-cascade-design.md). Os números de cada conversa aparecem na cabine; use-os para completar esta tabela.
+
+## Comece em 5 minutos
+
+**Você precisa de:** Windows com Node.js 22 ou mais recente, Chrome ou Edge, um perfil AWS com acesso ao Bedrock e fones de ouvido.
+
+1. **Instale as dependências.**
+
+   ```powershell
+   cd C:\workspace-dannytooh\nova-sonic
+   npm ci
+   if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+   ```
+
+2. **Aponte para a sua conta AWS** no `.env` da raiz:
+
+   ```dotenv
+   AWS_PROFILE=<seu_profile>
+   AWS_REGION=us-east-1
+   SONIC_MODEL_ID=amazon.nova-2-5-sonic
+   CASCADE_LLM_MODEL_ID=us.amazon.nova-2-lite-v1:0
+   ```
+
+3. **Confira a conta** (opcional, recomendado):
+
+   ```powershell
+   aws sso login --profile <seu_profile>
+   npm run probe:cascade
+   ```
+
+4. **Inicie o laboratório** e abra **http://localhost:3000**:
+
+   ```powershell
+   npm start
+   ```
+
+5. **Converse.** Coloque os fones, escolha a arquitetura, clique **Iniciar conversa** e fale.
+
+Não precisa de build nem de banco de dados. Para usar outra porta, defina `PORT` no `.env`.
+
+## Como usar
+
+1. **Crie o personagem.** Escolha uma imagem (PNG, JPG ou WebP, até 5 MB), um nome e um nome para a configuração.
+2. **Escolha a arquitetura** em *Voz e comportamento*: Nova Sonic, Polly ou ElevenLabs.
+3. **Defina a personalidade.** Escreva as instruções do personagem, o idioma e a espera entre turnos: Rápida, Equilibrada ou Paciente.
+4. **Informe os modelos** em *Modelo e conta AWS*. O botão **Consultar modelos da conta** lista os modelos Sonic disponíveis na região.
+5. **Salve.** **Salvar configuração** grava ou atualiza o JSON; **Salvar como nova** cria outra. **Exportar JSON** inclui a imagem.
+6. **Converse.** **Iniciar conversa** pede o microfone. **Encerrar conversa** libera o microfone e encerra a sessão.
+7. **Compare.** Repita a conversa nas outras arquiteturas e compare os números da cabine.
+
+Alterações feitas durante uma conversa valem na próxima. Com **Permitir interromper** desligado, o microfone fica mudo enquanto o personagem fala.
+
+## Como ler as métricas
+
+A cabine mostra, para cada resposta, a última medida, a mediana (p50) e o p95. Os valores são zerados a cada nova conversa.
+
+- **Latência percebida** é o que o cliente sente: do fim da sua fala até o primeiro som da resposta. É medida no navegador e inclui tudo: espera de fim de fala, rede, modelo e reprodução. Resolução de ~32 ms.
+- **Latência do modelo** isola a IA: do momento em que o fim da fala foi detectado até o primeiro áudio gerado. É medida no servidor.
+- **A diferença entre as duas** mostra quanto tempo vem da espera de fim de fala e do transporte, e não do modelo.
+- **Etapas da cascata:** nas arquiteturas Polly e ElevenLabs, a cabine também mostra o tempo até o primeiro texto do Bedrock e o tempo entre a primeira frase e a primeira voz.
+- **Consumo:** tokens de entrada e saída e caracteres de voz sintetizados, para estimar custo.
+
+**Dicas para uma comparação justa:**
+- use fones: eco e ruído de fundo antecipam o "fim da fala" e distorcem a medida;
+- repita o mesmo roteiro de perguntas nas três arquiteturas;
+- faça pelo menos 10 turnos antes de olhar o p95.
+
+## Pequeno glossário
+
+| Termo | O que significa |
+|---|---|
+| **Fala para fala** | Um único modelo recebe áudio e devolve áudio, sem etapa de texto visível. |
+| **Cascata** | Serviços em sequência: fala → texto → resposta → voz. |
+| **Fim de turno** | O momento em que o sistema decide que você terminou de falar. Esperar pouco corta frases; esperar muito deixa a conversa lenta. |
+| **Interrupção** | Falar por cima da resposta para cortá-la, como numa conversa humana. |
+| **p50 / p95** | Metade das respostas foi mais rápida que o p50; 95% foram mais rápidas que o p95. |
+| **PCM 16 kHz** | Áudio sem compressão a 16 mil amostras por segundo, o formato usado entre navegador e servidor. |
+| **Inference profile** | O identificador do Bedrock que escolhe o modelo de texto e a região (ex.: `us.amazon.nova-2-lite-v1:0`). |
+
+## Privacidade e segurança
+
+- O servidor escuta só em `127.0.0.1` e recusa requisições de outras origens.
+- Credenciais AWS e a chave do ElevenLabs ficam no servidor, lidas do `.env`. Nunca vão para o navegador nem para o JSON salvo.
+- A imagem do personagem é usada só na tela. Não é enviada a nenhum modelo nem usada para clonar voz.
+- Nenhum áudio é gravado. As transcrições ficam só na memória da página.
+- Na arquitetura ElevenLabs, o texto das respostas sai da AWS. Use dados fictícios em testes.
+
+## Configuração detalhada
+
+### Conta AWS
+
+Perfil e região são lidos exclusivamente do **`.env` na raiz**. Reinicie o servidor depois de alterar o arquivo. Na tela, eles aparecem só para consulta e não entram nas configurações JSON; valores antigos desses campos em arquivos importados são ignorados.
+
+Configure o perfil com o método de autenticação da sua organização:
 
 ```powershell
 aws configure sso --profile <seu_profile>
@@ -37,127 +191,103 @@ aws sso login --profile <seu_profile>
 aws sts get-caller-identity --profile <seu_profile>
 ```
 
-Se a conta usa credenciais em arquivo em vez de SSO, use `aws configure --profile <seu_profile>`.
-O SDK usa o perfil nomeado através de `fromIni`, incluindo a cadeia de perfis suportada pelo SDK. As credenciais permanecem no servidor e não são exportadas no JSON.
+Se a conta usa credenciais em arquivo em vez de SSO, use `aws configure --profile <seu_profile>`. O SDK usa o perfil nomeado através de `fromIni`.
 
-Na tela, configure o **identificador do modelo**. O botão **Consultar modelos da conta** usa perfil e região do `.env` para listar modelos Sonic via Bedrock; a listagem não confirma acesso de invocação. Para iniciar a conversa, o perfil precisa das permissões de invocação e do acesso ao modelo na região.
-
-Exemplo de política para o modelo documentado Nova 2 Sonic em `us-east-1` (ajuste o ARN para o modelo efetivamente escolhido):
+Exemplo de política para o Nova 2 Sonic em `us-east-1` (ajuste o ARN para o modelo escolhido):
 
 ```json
 {
   "Version": "2012-10-17",
   "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": "bedrock:InvokeModel",
-      "Resource": "arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-2-sonic-v1:0"
-    },
-    {
-      "Effect": "Allow",
-      "Action": "bedrock:ListFoundationModels",
-      "Resource": "*"
-    }
+    { "Effect": "Allow", "Action": "bedrock:InvokeModel", "Resource": "arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-2-sonic-v1:0" },
+    { "Effect": "Allow", "Action": "bedrock:ListFoundationModels", "Resource": "*" }
   ]
 }
 ```
 
-### Nova 2 versus Nova 2.5
+A listagem de modelos não confirma o acesso de invocação: para conversar, o perfil precisa da permissão de invocação e do acesso ao modelo na região.
 
-O projeto implementa o protocolo bidirecional documentado para Nova 2 Sonic, com `modelId` editável. `amazon.nova-2-sonic-v1:0` aparece na tela como opção explicitamente identificada. Nenhum modelo é escolhido ou substituído automaticamente.
+### Nova Sonic: Nova 2 e Nova 2.5
 
-Para **Nova 2.5 Sonic**, a consulta real na conta confirmou `amazon.nova-2-5-sonic` em `us-east-1`. Ele foi definido em `SONIC_MODEL_ID` no `.env`, tornando-se o valor inicial das novas configurações. A compatibilidade do protocolo e das vozes com 2.5 precisa ser validada com uma conversa real.
+O projeto implementa o protocolo bidirecional documentado para o Nova 2 Sonic, com `modelId` editável. `amazon.nova-2-sonic-v1:0` aparece na tela como opção identificada. Nenhum modelo é escolhido automaticamente.
+
+A consulta na conta confirmou `amazon.nova-2-5-sonic` em `us-east-1`, definido em `SONIC_MODEL_ID`. A compatibilidade do protocolo e das vozes com o 2.5 ainda precisa ser validada numa conversa real.
 
 ### Transcribe + Bedrock + Polly
 
-Segunda arquitetura da comparação. Escolha **Arquitetura: Transcribe + Bedrock + Polly** na tela. A fala vai ao Transcribe Streaming, o servidor decide o fim do turno pelo silêncio do microfone (Rápida 400 ms, Equilibrada 700 ms, Paciente 1100 ms), o texto vai ao Bedrock (`ConverseStream`) e a resposta é falada pelo Polly generativo em PCM 16 kHz, frase a frase. Detalhes e medições em `docs/polly-cascade-design.md`.
-
-Defina o modelo de texto padrão no `.env`:
+O servidor decide o fim da fala pelo silêncio do microfone (Rápida 400 ms, Equilibrada 700 ms, Paciente 1100 ms). Em seguida o texto vai ao Bedrock (`ConverseStream`), e a resposta é falada pelo Polly generativo em PCM 16 kHz, frase a frase. Detalhes em [docs/polly-cascade-design.md](docs/polly-cascade-design.md).
 
 ```dotenv
 CASCADE_LLM_MODEL_ID=us.amazon.nova-2-lite-v1:0
 ```
 
-Confira permissões e latências da conta sem abrir a interface:
-
-```powershell
-npm run probe:cascade
-```
-
 Permissões usadas: `transcribe:StartStreamTranscription`, síntese do Polly (`polly:SynthesizeSpeech` e o streaming bidirecional) e `bedrock:InvokeModelWithResponseStream` no inference profile escolhido e nos modelos de base dele. A ação IAM exata do streaming do Polly ainda não foi confirmada com um perfil restrito.
-
-A única voz generativa em português brasileiro é **Camila**. Use fones: sem eles, a voz do Polly captada pelo microfone pode interromper a própria resposta.
 
 ### Transcribe + Bedrock + ElevenLabs
 
-Terceira arquitetura: igual à do Polly, com a voz gerada pelo ElevenLabs (WebSocket `stream-input`, PCM 16 kHz, frase a frase). Detalhes em `docs/elevenlabs-cascade-design.md`.
+Igual à cascata do Polly, com a voz gerada pelo ElevenLabs (WebSocket `stream-input`, PCM 16 kHz, frase a frase). Detalhes em [docs/elevenlabs-cascade-design.md](docs/elevenlabs-cascade-design.md).
 
-Crie uma conta (segundo a documentação pública do ElevenLabs, a free basta para testar, com 10 mil créditos por mês e 0,5 crédito por caractere no Flash v2.5; confirme na sua conta), gere uma chave de API e preencha o `.env`:
+1. Crie uma conta no ElevenLabs. Segundo a documentação pública, a conta free basta para testar: 10 mil créditos por mês, e cada caractere do Flash v2.5 consome 0,5 crédito. Confirme na sua conta.
+2. Gere uma chave de API e preencha o `.env`:
 
-```dotenv
-ELEVENLABS_API_KEY=<sua_chave>
-ELEVENLABS_MODEL_ID=eleven_flash_v2_5
-ELEVENLABS_VOICE_ID=<id_da_voz>
-```
+   ```dotenv
+   ELEVENLABS_API_KEY=<sua_chave>
+   ELEVENLABS_MODEL_ID=eleven_flash_v2_5
+   ELEVENLABS_VOICE_ID=<id_da_voz>
+   ```
 
-Use Flash ou Turbo v2.5 (recomendado): só os modelos v2.5 aceitam forçar o idioma (`language_code`), que o servidor envia apenas quando o ID do modelo contém `v2_5`. A chave fica só no servidor; a tela mostra apenas se ela está configurada. Para listar as vozes da conta e medir a latência:
+3. Confira a conta, liste as vozes e meça a latência:
 
-```powershell
-npm run probe:elevenlabs
-```
+   ```powershell
+   npm run probe:elevenlabs
+   ```
 
-Na tela, escolha **Transcribe + Bedrock + ElevenLabs**, use **Consultar vozes do ElevenLabs** e informe o ID da voz. O texto das respostas é enviado ao ElevenLabs, fora da AWS; na conta free não há direito de uso comercial.
+4. Na tela, escolha **Transcribe + Bedrock + ElevenLabs**, use **Consultar vozes do ElevenLabs** e informe o ID da voz.
 
-## Usar
+Use Flash ou Turbo v2.5: só os modelos v2.5 aceitam forçar o idioma (`language_code`), que o servidor envia apenas quando o ID do modelo contém `v2_5`. Na conta free não há direito de uso comercial.
 
-1. Escolha uma imagem PNG, JPG ou WebP de até 5 MB e dê nome ao personagem.
-2. Configure voz, idioma, instruções, espera entre turnos e parâmetros de geração.
-3. Informe o modelo compatível com a região do `.env`. `carolina`, `leo`, `tiffany` e `matthew` são sugestões documentadas para Nova 2; também é possível digitar outro `voiceId` suportado.
-4. **Salvar configuração** cria um JSON ou atualiza a configuração carregada. **Salvar como nova** cria outra configuração.
-5. Use a biblioteca para carregar configurações; **Exportar JSON** inclui a imagem. **Importar configuração JSON** abre uma configuração para edição e posterior salvamento.
-6. Clique **Iniciar conversa**, permita o microfone e fale. Use fones. **Encerrar conversa** libera o microfone e os recursos da sessão.
+## Estrutura do projeto
 
-A imagem é usada apenas na interface e fica embutida em base64 no JSON. Não é enviada ao Bedrock nem usada para clonagem de voz. O tom e a personalidade são orientados pelo prompt; não existem controles artificiais de pitch ou velocidade.
+| Caminho | Responsabilidade |
+|---|---|
+| `src/app.js` | Servidor HTTP e WebSocket, acesso só local, escolha da arquitetura |
+| `src/config.js` | Valores padrão e validação das configurações |
+| `src/store.js` | Biblioteca em `data/configs/<uuid>.json`, com gravação atômica |
+| `src/sonic.js` | Protocolo e sessão do Nova Sonic |
+| `src/cascade/turn.js` | Fim de turno, divisão em frases e alinhamento do áudio |
+| `src/cascade/aws.js` | Integração com Transcribe, Bedrock e Polly |
+| `src/cascade/elevenlabs.js` | Voz e lista de vozes do ElevenLabs |
+| `src/cascade/session.js` | Orquestração da conversa em cascata |
+| `public/` | Interface, captura do microfone, reprodução e métricas |
+| `scripts/probe-*.js` | Verificação de permissões e latências na conta |
+| `docs/` | Decisões de arquitetura, planos e imagens do README |
 
-Alterações feitas durante uma conversa entram em vigor na próxima sessão. Desativar interrupções silencia o áudio enviado pelo microfone durante a reprodução da resposta; esse controle é implementado no cliente, não como parâmetro inventado da API.
+Configurações usam `schemaVersion: 1`, com os grupos `character`, `connection`, `cascade` e `conversation`. Arquivos antigos continuam abrindo. As sessões têm limite de 8 minutos e filas limitadas para não acumular áudio.
 
-### Latência
-
-Durante a conversa, a tela mostra duas medidas por turno (última, p50, p95 e quantidade), zeradas a cada nova conversa:
-
-- **Latência percebida**: medida no navegador, do último trecho de 32 ms com voz no microfone (RMS ≥ 0,02) até o início da reprodução da resposta. Inclui espera de fim de turno, rede, modelo e buffer de reprodução. A resolução é de ~32 ms. Ruído de fundo forte ou eco sem fones antecipam o "fim da fala" e reduzem o valor medido.
-- **Latência do modelo**: medida no servidor, do fim do bloco de transcrição do usuário (turno detectado pelo Sonic) até o primeiro `audioOutput`. Exclui a espera de fim de turno e a rede até o navegador.
-
-A diferença entre as duas indica quanto do tempo vem do endpointing (`Espera entre turnos`) e do transporte.
-
-- Na arquitetura em cascata, "Latência do modelo" vai do fim do turno decidido pelo servidor até o primeiro áudio da voz (Polly ou ElevenLabs). A cabine também mostra, por turno, o tempo até o primeiro texto do Bedrock e o tempo entre a primeira frase e a primeira voz.
-
-## Arquivos e dados
-
-- `src/config.js`: defaults e validação do formato.
-- `src/store.js`: persistência em `data/configs/<uuid>.json`, escrita temporária seguida de rename.
-- `src/sonic.js`: protocolo, fila limitada, integração AWS e roteamento de áudio/transcrições.
-- `src/app.js`: HTTP e WebSocket, validação de acesso local.
-- `public/`: interface, AudioWorklet, reamostragem PCM, reprodução e métricas de latência (`metrics.js`).
-- `output/sonic-studio.html`: mockup original, preservado.
-- `src/cascade/`: arquitetura em cascata (`turn.js` fim de turno, frases e PCM; `aws.js` adaptadores de Transcribe, Bedrock e Polly; `session.js` orquestração; `elevenlabs.js` voz e vozes do ElevenLabs).
-- `scripts/probe-cascade.js`: verificação de permissões e latências da cascata na conta.
-- `scripts/probe-elevenlabs.js`: verificação da chave, vozes, formato e latência do ElevenLabs.
-
-`schemaVersion: 1` identifica o formato. Os grupos `character`, `connection` e `conversation` contêm a imagem/identidade, modelo e parâmetros de voz respectivamente. Um arquivo salvo recebe `id`, `createdAt` e `updatedAt`. Perfil e região pertencem apenas ao `.env`.
-
-As configurações ficam no disco e sobrevivem ao reinício. Transcrições ficam apenas na memória da página (até 100 blocos); áudio não é gravado. Sessões têm limite de oito minutos e filas limitadas para não acumular áudio indefinidamente.
-
-## Validar
+## Qualidade
 
 ```powershell
 npm test
 npm run check
 ```
 
-Os testes exercitam armazenamento real em diretórios temporários, formato de imagens, entradas inválidas, HTTP, WebSocket, eventos Sonic, reamostragem PCM e fluxos da interface via DOM. Não invocam modelos pagos.
+Os testes cobrem armazenamento real em pastas temporárias, validação de imagens e configurações, HTTP, WebSocket, protocolo do Sonic, a conversa em cascata (fim de turno, interrupção, histórico, falhas e limite de tempo), os adaptadores da AWS e do ElevenLabs com serviços simulados e a interface via DOM. Nenhum teste chama serviços pagos.
 
-Autenticação do perfil `<seu_profile>` e listagem de modelos Bedrock foram validadas. O servidor precisa de acesso aos arquivos AWS locais do usuário; em um sandbox que bloqueie esse acesso, execute `npm start` em seu terminal local. Uma conversa completa na AWS ainda não foi validada. A conferência visual em navegador também não foi possível por não haver navegador conectado; o teste DOM não substitui a avaliação visual e o teste do microfone real.
+## Status e próximos passos
+
+**Pronto:** as três arquiteturas, as métricas na cabine, a biblioteca de personagens e os scripts de verificação da conta.
+
+**Validado na conta AWS:** autenticação do perfil, listagem de modelos, vozes do Polly, streaming do Polly, Transcribe em pt-BR e primeiro token de três modelos de texto.
+
+**Ainda a validar:**
+- conversa completa com microfone nas três arquiteturas;
+- integração com o ElevenLabs, que depende da chave;
+- política IAM mínima para o streaming do Polly.
+
+**Próximos passos da comparação:**
+- benchmark com o mesmo roteiro gravado em áudio para as três arquiteturas;
+- gravação das respostas e avaliação às cegas de naturalidade (notas de 1 a 5);
+- relatório final com latência, naturalidade, custo e complexidade.
 
 ## Referências
 
@@ -199,3 +329,31 @@ Usadas para os limites da conta free, que a documentação oficial não detalha.
 - [ElevenLabs Free Plan 2026 (costbench)](https://costbench.com/software/ai-voice-tools/elevenlabs/free-plan): 10 mil créditos por mês, acesso à API, sem uso comercial.
 - [ElevenLabs API Pricing (puter)](https://developer.puter.com/tutorials/elevenlabs-api-pricing/): Flash v2.5 a 0,5 crédito por caractere e limite de 2 requisições simultâneas no free.
 - [Erro com pcm_44100 (fórum Convai)](https://forum.convai.com/t/elevenlabs-requested-output-format-pcm-44100-error/1438): relato de PCM 44,1 kHz recusado fora do plano Pro.
+
+## Ferramentas de IA no desenvolvimento
+
+Este projeto foi desenvolvido pelo autor com o auxílio das ferramentas de IA abaixo.
+
+| Ferramenta | Como ajudou |
+|---|---|
+| [Codex (ChatGPT, OpenAI)](https://openai.com/codex) | Versão base do código e protótipo inicial da interface (`output/sonic-studio.html`) |
+| [Claude Code](https://claude.com/claude-code) | Evolução a partir da base: métricas de latência, redesenho da interface, arquiteturas Polly e ElevenLabs, pesquisa das APIs, testes, revisão de código e documentação |
+| [Higgsfield](https://higgsfield.ai) | Mockup de referência do redesenho da interface e banner do README |
+
+O print da tela é da aplicação real.
+
+## Autor
+
+<p>
+  <strong>Dannyrooh Campos</strong><br>
+  Senior Software Engineer & Solutions Architect · Fundador da <a href="https://www.webmadria.com.br">Webmadria</a><br>
+  AWS, Cloud Native, AI Agents, RAG, MCP e automação · São Paulo, Brasil
+</p>
+
+<p>
+  <a href="https://www.linkedin.com/in/dannyrooh-fernandes-de-campos-1446a019"><img alt="LinkedIn" src="https://img.shields.io/badge/LinkedIn-Dannyrooh%20Campos-0A66C2?logo=linkedin&logoColor=white"></a>
+  <a href="https://github.com/dannyrooh"><img alt="GitHub" src="https://img.shields.io/badge/GitHub-dannyrooh-181717?logo=github&logoColor=white"></a>
+  <a href="https://www.webmadria.com.br"><img alt="Webmadria" src="https://img.shields.io/badge/Webmadria-webmadria.com.br-2FB38A"></a>
+</p>
+
+<p>Webmadria: <a href="https://www.webmadria.com.br">webmadria.com.br</a> · <a href="https://www.webmadria.com">webmadria.com</a></p>

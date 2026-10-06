@@ -7,7 +7,7 @@ O mockup apresentado é a referência visual; a solicitação de criar o código
 - Servidor Node.js, interface web em português, acesso apenas em loopback.
 - Imagem PNG/JPEG/WebP de até 5 MB embutida no JSON; nunca enviada ao modelo.
 - Salvar, carregar, atualizar, importar e exportar configurações em JSON no disco.
-- Perfil AWS marksell e região no .env da raiz, sem credenciais no navegador ou JSON; valores antigos no JSON são ignorados.
+- Perfil AWS e região no .env da raiz, sem credenciais no navegador ou JSON; valores antigos no JSON são ignorados.
 - ModelId, voiceId, idioma, prompt, turn detection e parâmetros de inferência editáveis na tela.
 - Microfone PCM mono 16 kHz via AudioWorklet; reprodução PCM 24 kHz; transcrição e interrupções.
 - Erros visíveis, encerramento libera microfone, stream e cliente AWS.

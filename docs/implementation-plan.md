@@ -6,7 +6,7 @@
 **Spec:** docs/design.md
 
 ## Global Constraints
-Loopback; perfil marksell; imagens até 5 MB; nenhum segredo no JSON; seleção explícita de modelo.
+Loopback; perfil AWS do .env; imagens até 5 MB; nenhum segredo no JSON; seleção explícita de modelo.
 
 ## Review Focus
 JSON malformado; imagem falsa; identificadores com path traversal; desconexão durante stream; microfone negado.
