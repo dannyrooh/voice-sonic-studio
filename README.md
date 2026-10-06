@@ -161,7 +161,41 @@ Autenticação do perfil `<seu_profile>` e listagem de modelos Bedrock foram val
 
 ## Referências
 
+Fontes consultadas na pesquisa de cada arquitetura. As decisões e as medições feitas na conta estão nos documentos de design.
+
+### Documentos do projeto
+
+- [Arquitetura Transcribe + Bedrock + Polly](docs/polly-cascade-design.md): decisões e medições reais na conta (vozes, streaming do Polly, Transcribe pt-BR, primeiro token de três modelos).
+- [Arquitetura Transcribe + Bedrock + ElevenLabs](docs/elevenlabs-cascade-design.md): decisões e o que ainda falta confirmar na conta.
+- Planos executados: [Polly](docs/superpowers/plans/2026-10-06-polly-cascade.md) e [ElevenLabs](docs/superpowers/plans/2026-10-06-elevenlabs-cascade.md).
+
+### Amazon Nova Sonic
+
 - [Protocolo de entrada Sonic 2](https://docs.aws.amazon.com/nova/latest/nova2-userguide/sonic-input-events.html)
 - [Eventos de saída e transcrições](https://docs.aws.amazon.com/nova/latest/nova2-userguide/sonic-output-events.html)
 - [API bidirecional com SDK JavaScript](https://docs.aws.amazon.com/nova/latest/userguide/speech-bidirection.html)
 - [Controle de turnos](https://docs.aws.amazon.com/nova/latest/nova2-userguide/sonic-turn-taking.html)
+
+### Amazon Polly
+
+- [StartSpeechSynthesisStream](https://docs.aws.amazon.com/polly/latest/dg/API_StartSpeechSynthesisStream.html): streaming bidirecional, só motor generativo, eventos `TextEvent`, `CloseStreamEvent`, `AudioEvent` e `StreamClosedEvent`.
+- [SynthesizeSpeech](https://docs.aws.amazon.com/polly/latest/dg/API_SynthesizeSpeech.html): formatos de saída e taxas aceitas (PCM só em 8000 ou 16000 Hz) e limites de texto.
+- [Bidirectional streaming](https://docs.amazonaws.cn/en_us/polly/latest/dg/bidirectional-streaming.md): SDKs com suporte, incluindo JavaScript v3.
+- [Service Authorization Reference do Polly](https://docs.aws.amazon.com/service-authorization/latest/reference/list_amazonpolly.html): consultado para a ação IAM do streaming; a política mínima ainda não foi confirmada.
+
+Transcribe Streaming, Bedrock ConverseStream e as vozes generativas foram verificados direto na conta, pelo AWS CLI (`polly describe-voices`, `bedrock list-inference-profiles`) e pelos probes. Os resultados estão em `docs/polly-cascade-design.md`.
+
+### ElevenLabs (documentação oficial)
+
+- [WebSockets](https://elevenlabs.io/docs/websockets): mensagens de abertura, envio com `flush`, fechamento e boas práticas de latência.
+- [Referência do stream-input](https://elevenlabs.io/docs/api-reference/text-to-speech/v-1-text-to-speech-voice-id-stream-input): parâmetros da conexão (`model_id`, `output_format`, `language_code`, `inactivity_timeout`) e formato das respostas.
+- [Referência do stream de texto para fala](https://elevenlabs.io/docs/api-reference/text-to-speech/stream.md): formatos de saída; PCM 44,1 kHz exige plano Pro.
+- [Preços da API](https://elevenlabs.io/pricing/api): preço por mil caracteres por modelo e acesso à API no pagamento por uso.
+
+### ElevenLabs (fontes secundárias)
+
+Usadas para os limites da conta free, que a documentação oficial não detalha. Os números ainda precisam ser confirmados na conta.
+
+- [ElevenLabs Free Plan 2026 (costbench)](https://costbench.com/software/ai-voice-tools/elevenlabs/free-plan): 10 mil créditos por mês, acesso à API, sem uso comercial.
+- [ElevenLabs API Pricing (puter)](https://developer.puter.com/tutorials/elevenlabs-api-pricing/): Flash v2.5 a 0,5 crédito por caractere e limite de 2 requisições simultâneas no free.
+- [Erro com pcm_44100 (fórum Convai)](https://forum.convai.com/t/elevenlabs-requested-output-format-pcm-44100-error/1438): relato de PCM 44,1 kHz recusado fora do plano Pro.
