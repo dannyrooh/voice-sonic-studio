@@ -337,7 +337,7 @@ Este projeto foi desenvolvido pelo autor com o auxílio das ferramentas de IA ab
 | Ferramenta | Como ajudou |
 |---|---|
 | [Claude Code](https://claude.com/claude-code) | Pesquisa das APIs, planejamento, implementação, testes, revisão de código e documentação |
-| [Codex](https://openai.com/codex) | Apoio no desenvolvimento |
+| [Codex (ChatGPT, OpenAI)](https://openai.com/codex) | Apoio no desenvolvimento |
 | [Higgsfield](https://higgsfield.ai) | Mockup de referência da interface e banner do README |
 
 O print da tela é da aplicação real.
