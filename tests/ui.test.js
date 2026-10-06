@@ -92,4 +92,10 @@ test('UI initializes, saves, reloads and exports the edited configuration throug
   const cascade = JSON.parse(await exported.text());
   assert.equal(cascade.pipeline, 'polly');
   assert.deepEqual(cascade.cascade, { llmModelId: 'us.amazon.nova-micro-v1:0', pollyVoiceId: 'Camila' });
+  $('voice-id').value = '';
+  assert.equal($('config-form').checkValidity(), true);
+  $('pipeline').value = 'sonic'; $('pipeline').dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+  assert.equal($('config-form').checkValidity(), false);
+  assert.equal($('polly-voice-id').disabled, true);
+  $('voice-id').value = 'carolina';
 });

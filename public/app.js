@@ -35,7 +35,7 @@ function renderAvatar(container, small = false) {
   if (avatar) { const image = document.createElement('img'); image.src = avatar.dataUrl; image.alt = `Personagem ${$('character-name').value}`; container.append(image); }
   else { const span = document.createElement('span'); span.textContent = ($('character-name').value || 'A').slice(0, 1); container.append(span); }
 }
-function showPipeline() { for (const element of document.querySelectorAll('[data-pipeline]')) element.hidden = element.dataset.pipeline !== $('pipeline').value; }
+function showPipeline() { for (const element of document.querySelectorAll('[data-pipeline]')) { element.hidden = element.dataset.pipeline !== $('pipeline').value; for (const input of element.querySelectorAll('input')) input.disabled = element.hidden; } }
 function updatePreview() {
   showPipeline();
   const c = readConfig();
