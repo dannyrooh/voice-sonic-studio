@@ -338,11 +338,14 @@ Usadas para os limites da conta free, que a documentação oficial não detalha.
 
 <p>
   <strong>Dannyrooh Campos</strong><br>
-  Senior Software Engineer & Solutions Architect · Fundador da Webmadria<br>
+  Senior Software Engineer & Solutions Architect · Fundador da <a href="https://www.webmadria.com.br">Webmadria</a><br>
   AWS, Cloud Native, AI Agents, RAG, MCP e automação · São Paulo, Brasil
 </p>
 
 <p>
   <a href="https://www.linkedin.com/in/dannyrooh-fernandes-de-campos-1446a019"><img alt="LinkedIn" src="https://img.shields.io/badge/LinkedIn-Dannyrooh%20Campos-0A66C2?logo=linkedin&logoColor=white"></a>
   <a href="https://github.com/dannyrooh"><img alt="GitHub" src="https://img.shields.io/badge/GitHub-dannyrooh-181717?logo=github&logoColor=white"></a>
+  <a href="https://www.webmadria.com.br"><img alt="Webmadria" src="https://img.shields.io/badge/Webmadria-webmadria.com.br-2FB38A"></a>
 </p>
+
+<p>Webmadria: <a href="https://www.webmadria.com.br">webmadria.com.br</a> · <a href="https://www.webmadria.com">webmadria.com</a></p>
