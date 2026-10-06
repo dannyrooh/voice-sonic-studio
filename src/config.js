@@ -5,14 +5,18 @@ export const VOICES = [
   { id: 'tiffany', label: 'Tiffany · Poliglota' },
   { id: 'matthew', label: 'Matthew · Poliglota' },
 ];
+export const PIPELINES = ['sonic', 'polly'];
+export const POLLY_VOICES = [{ id: 'Camila', label: 'Camila · Português brasileiro (generativa)' }];
 export function defaults() {
   return {
     schemaVersion: 1,
     name: 'Aurora · Atendimento comercial',
+    pipeline: 'sonic',
     character: { name: 'Aurora', avatar: null },
     connection: {
       modelId: process.env.SONIC_MODEL_ID || '',
     },
+    cascade: { llmModelId: process.env.CASCADE_LLM_MODEL_ID || '', pollyVoiceId: 'Camila' },
     conversation: {
       voiceId: 'carolina', language: 'pt-BR',
       systemPrompt: 'Você é Aurora, uma assistente comercial cordial. Converse com respostas curtas e claras. Faça uma pergunta de cada vez e confirme valores e nomes quando necessário.',
@@ -56,13 +60,18 @@ export function validateAvatar(avatar) {
 }
 
 export function validateConfig(input, { requireModel = false } = {}) {
-  object(input, ['schemaVersion', 'id', 'createdAt', 'updatedAt', 'name', 'character', 'connection', 'conversation'], 'configuração');
+  object(input, ['schemaVersion', 'id', 'createdAt', 'updatedAt', 'name', 'pipeline', 'character', 'connection', 'cascade', 'conversation'], 'configuração');
   if (input.schemaVersion !== 1) fail('Versão de configuração não suportada.');
+  const pipeline = input.pipeline ?? 'sonic';
+  if (!PIPELINES.includes(pipeline)) fail('Arquitetura inválida.');
   object(input.character, ['name', 'avatar'], 'personagem');
   object(input.connection, ['awsProfile', 'region', 'modelId'], 'conexão');
+  // Arquivos anteriores à arquitetura em cascata não têm o grupo cascade.
+  const cascade = input.cascade ?? defaults().cascade;
+  object(cascade, ['llmModelId', 'pollyVoiceId'], 'cascata');
   object(input.conversation, ['voiceId', 'language', 'systemPrompt', 'endpointingSensitivity', 'allowInterruption', 'temperature', 'topP', 'maxTokens'], 'conversa');
   const connection = {
-    modelId: string(input.connection.modelId, 'Identificador do modelo', 200, !requireModel),
+    modelId: string(input.connection.modelId, 'Identificador do modelo', 200, !(requireModel && pipeline === 'sonic')),
   };
   // Perfil e região de arquivos antigos são aceitos apenas para leitura e descartados.
   const c = input.conversation;
@@ -70,9 +79,13 @@ export function validateConfig(input, { requireModel = false } = {}) {
   if (!['HIGH', 'MEDIUM', 'LOW'].includes(c.endpointingSensitivity)) fail('Espera entre turnos inválida.');
   if (typeof c.allowInterruption !== 'boolean') fail('Permitir interrupção deve ser booleano.');
   return {
-    schemaVersion: 1, name: string(input.name, 'Nome da configuração', 100),
+    schemaVersion: 1, name: string(input.name, 'Nome da configuração', 100), pipeline,
     character: { name: string(input.character.name, 'Nome do personagem', 80), avatar: validateAvatar(input.character.avatar) },
     connection,
+    cascade: {
+      llmModelId: string(cascade.llmModelId, 'Modelo de texto', 200, !(requireModel && pipeline === 'polly')),
+      pollyVoiceId: string(cascade.pollyVoiceId, 'Voz do Polly', 40),
+    },
     conversation: {
       voiceId: string(c.voiceId, 'Identificador da voz', 80), language: c.language,
       systemPrompt: string(c.systemPrompt, 'Instruções', 12000),

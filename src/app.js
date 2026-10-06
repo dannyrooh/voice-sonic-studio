@@ -5,7 +5,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { BedrockClient, ListFoundationModelsCommand } from '@aws-sdk/client-bedrock';
 import { fromIni } from '@aws-sdk/credential-providers';
 import { ConfigStore } from './store.js';
-import { defaults, validateConfig, ValidationError, VOICES } from './config.js';
+import { defaults, validateConfig, ValidationError, VOICES, POLLY_VOICES } from './config.js';
 import { SonicSession } from './sonic.js';
 import { getAwsSettings } from './aws-settings.js';
 
@@ -33,7 +33,7 @@ export function createApplication({ dataDir = fileURLToPath(new URL('../data/con
     next();
   });
   app.use(express.json({ limit: '8mb' }));
-  app.get('/api/bootstrap', (req, res) => res.json({ defaults: defaults(), voices: VOICES, aws: awsSettings }));
+  app.get('/api/bootstrap', (req, res) => res.json({ defaults: defaults(), voices: VOICES, pollyVoices: POLLY_VOICES, aws: awsSettings }));
   app.get('/api/configs', async (req, res) => res.json(await store.list()));
   app.get('/api/configs/:id', async (req, res) => res.json(await store.get(req.params.id)));
   app.post('/api/configs', async (req, res) => res.status(201).json(await store.save(req.body)));
