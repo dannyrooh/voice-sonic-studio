@@ -1157,3 +1157,4 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ## Ledger
 
 - 2026-10-06: plano escrito a partir de probes reais na conta (vozes, streaming do Polly, Transcribe pt-BR, primeiro token de três modelos). Execução pendente.
+- 2026-10-06: executado com subagentes (Tasks 1-7, uma rodada de correção nas Tasks 4 e 6, revisão final e uma onda de correção). 40 testes passando. Probe real: Polly 1º áudio 814 ms; Transcribe último parcial 1158 ms e final 1488 ms após a fala; Nova 2 Lite 1º token 887 ms. Pendente: conversa real com microfone (Task 7 Step 5) e calibração de settleMs/ENDPOINT_MS.
