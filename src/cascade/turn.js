@@ -13,13 +13,13 @@ export class TurnDetector {
     return voiced;
   }
   transcript(id, text, now) {
-    const words = value => value.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/).filter(Boolean).length;
+    // Mesma tokenização para contar e fatiar; tokens sem letra ou número (travessão solto) não contam.
+    const words = value => value.split(/\s+/).filter(word => /[\p{L}\p{N}]/u.test(word));
     let fresh = text;
     if (this.answered.has(id)) {
       // Fala retomada dentro de um ResultId já respondido: só as palavras novas no fim contam.
-      const before = words(this.answered.get(id)); const all = text.split(/\s+/).filter(Boolean);
-      if (words(text) <= before) return false;
-      fresh = all.slice(before).join(' ');
+      fresh = words(text).slice(words(this.answered.get(id)).length).join(' ');
+      if (!fresh.trim()) return false;
     }
     this.segments.set(id, fresh); this.full.set(id, text); this.lastTextAt = now;
     return true;

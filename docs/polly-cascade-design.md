@@ -27,7 +27,7 @@ microfone 16 kHz ──► Transcribe Streaming (pt-BR) ──► detecção de 
 ## Decisões
 
 1. **Fim de turno no servidor, não no Transcribe.** Esperar o resultado final custaria ~1,5 s por turno. O servidor mede o volume de cada chunk recebido (o mesmo `voiceLevel` do navegador) e encerra o turno quando há silêncio por um tempo derivado de "Espera entre turnos" (Rápida 400 ms, Equilibrada 700 ms, Paciente 1100 ms) **e** o texto parcial está estável há 250 ms. Valores iniciais, a calibrar com uso real.
-2. **Resultados atrasados de uma fala já respondida são ignorados** pelo `ResultId` do Transcribe. Sem isso, o final que chega 1,5 s depois interromperia a própria resposta.
+2. **Resultados atrasados de uma fala já respondida são ignorados** pelo `ResultId` do Transcribe: resultados com o mesmo número de palavras ou menos não contam, e palavras extras no fim do mesmo `ResultId` viram continuação (fala nova). Sem isso, o final que chega 1,5 s depois interromperia a própria resposta.
 3. **Polly aberto em paralelo com o LLM.** A conexão do Polly é aberta no início do turno, junto com a chamada ao Bedrock, para o handshake não somar à latência. O texto do LLM é agrupado em frases (pontuação + espaço, mínimo 12 caracteres) e cada frase vai ao Polly com `FlushStreamConfiguration.Force`.
 4. **Áudio de saída em PCM 16 kHz.** O navegador já reproduz qualquer taxa (`play(audio, sampleRate)`); nada muda no cliente de áudio.
 5. **Interrupção.** Com "Permitir interromper" ligado, uma fala nova (resultado do Transcribe com `ResultId` novo) durante a geração ou enquanto o áudio enviado ainda deve estar tocando cancela LLM e Polly e envia `interrupted`, o mesmo evento que o Sonic usa. Desligado, o navegador já envia silêncio durante a reprodução.

@@ -1,12 +1,13 @@
 import { EventQueue, systemText } from '../sonic.js';
+import { ValidationError } from '../config.js';
 import { TurnDetector, SentenceChunker, PcmAligner, ENDPOINT_MS } from './turn.js';
 
 const MAX_MESSAGES = 20;
 const SPOKEN_OUTPUT = '\nSuas respostas serão faladas em voz alta: use frases curtas, sem markdown, listas, emojis ou URLs.';
 
 export class CascadeSession {
-  constructor(config, send, adapters, { now = () => performance.now(), pollMs = 50 } = {}) {
-    this.config = config; this.send = send; this.adapters = adapters; this.now = now; this.pollMs = pollMs;
+  constructor(config, send, adapters, { now = () => performance.now(), pollMs = 50, turnTimeoutMs = 30000 } = {}) {
+    this.config = config; this.send = send; this.adapters = adapters; this.now = now; this.pollMs = pollMs; this.turnTimeoutMs = turnTimeoutMs;
     this.audioQueue = new EventQueue(); this.controller = new AbortController();
     this.detector = new TurnDetector(ENDPOINT_MS[config.conversation.endpointingSensitivity]);
     this.history = []; this.turn = null; this.pending = null; this.turns = 0; this.playbackUntil = 0;
@@ -28,6 +29,7 @@ export class CascadeSession {
     if (this.error) throw this.error;
   }
   audio(bytes) {
+    if (!Buffer.isBuffer(bytes) || !bytes.length || bytes.length % 2 || bytes.length > 8192) throw new ValidationError('Chunk PCM inválido.');
     if (this.closed) return;
     this.detector.audio(bytes, this.now());
     this.audioQueue.push(bytes);
@@ -56,11 +58,15 @@ export class CascadeSession {
     this.send({ type: 'transcript', id: `turn-${n}-user`, role: 'USER', text });
     this.addMessage('user', text);
     const sentences = new EventQueue();
+    // Bedrock ou Polly travados sem erro derrubariam a conversa em silêncio: o turno vira falha visível.
+    const timeout = setTimeout(() => { turn.failure ??= new Error(`A resposta demorou mais de ${Math.round(this.turnTimeoutMs / 1000)} s. Verifique o modelo e a conexão com a AWS e inicie outra conversa.`); turn.controller.abort(); }, this.turnTimeoutMs);
+    timeout.unref?.();
     try {
       // Polly abre a conexão junto com o Bedrock para o handshake não somar à latência.
       await Promise.allSettled([this.generate(turn, n, sentences, signal), this.speak(turn, sentences, signal)]);
       if (turn.failure) throw turn.failure;
     } finally {
+      clearTimeout(timeout);
       if (turn.text.trim()) this.addMessage('assistant', turn.text.trim());
       if (this.turn === turn) this.turn = null;
       this.send({ type: 'usage', ...this.usage });

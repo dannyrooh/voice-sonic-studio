@@ -87,7 +87,7 @@ export function validateConfig(input, { requireModel = false } = {}) {
       pollyVoiceId: string(cascade.pollyVoiceId, 'Voz do Polly', 40),
     },
     conversation: {
-      voiceId: string(c.voiceId, 'Identificador da voz', 80), language: c.language,
+      voiceId: string(c.voiceId, 'Identificador da voz', 80, pipeline === 'polly'), language: c.language,
       systemPrompt: string(c.systemPrompt, 'Instruções', 12000),
       endpointingSensitivity: c.endpointingSensitivity, allowInterruption: c.allowInterruption,
       temperature: number(c.temperature, 0, 1, 'Temperatura'),

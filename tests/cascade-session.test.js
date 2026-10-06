@@ -128,3 +128,22 @@ test('speech resumed inside an answered result id interrupts and is answered alo
   assert.deepEqual(a.calls.reply[1].messages.at(-1), { role: 'user', content: [{ text: 'de entrega' }] });
   s.stop(); await running; s.abort();
 });
+
+test('a stalled turn times out and ends the session with a visible error', async () => {
+  let clock = 0; const a = fakeAdapters();
+  a.reply = async function* (request, signal) { await new Promise((_, reject) => signal.addEventListener('abort', () => reject(signal.reason))); };
+  const s = new CascadeSession(config(), () => {}, a, { now: () => clock, pollMs: 1e6, turnTimeoutMs: 20 });
+  const running = s.start();
+  s.audio(loud()); a.results.push({ id: 'r1', text: 'Oi', partial: false }); await flush();
+  clock = 1000; s.poll();
+  await assert.rejects(running, /demorou mais de/);
+  s.abort();
+});
+
+test('audio rejects invalid PCM chunks', () => {
+  const s = new CascadeSession(config(), () => {}, fakeAdapters(), { pollMs: 1e6 });
+  assert.throws(() => s.audio(Buffer.alloc(3)), /PCM/);
+  assert.throws(() => s.audio(Buffer.alloc(0)), /PCM/);
+  assert.throws(() => s.audio('x'), /PCM/);
+  assert.throws(() => s.audio(Buffer.alloc(8194)), /PCM/);
+});

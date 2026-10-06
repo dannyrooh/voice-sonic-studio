@@ -48,3 +48,17 @@ test('speech resumed inside an answered result id counts only the new trailing w
   assert.equal(d.transcript('a', 'Quero saber o prazo de entrega.', 3000), false, 'final com pontuação');
   assert.equal(d.poll(5000), null);
 });
+
+test('continuation uses the same tokenization to count and slice (hyphenated words)', () => {
+  const d = new TurnDetector(700, 250);
+  d.audio(loud(), 0); d.transcript('a', 'Pode ser na segunda', 50);
+  assert.equal(d.poll(1000), 'Pode ser na segunda');
+  assert.equal(d.transcript('a', 'Pode ser na segunda-feira.', 1200), false);
+  assert.equal(d.text, '');
+  const e = new TurnDetector(700, 250);
+  e.audio(loud(), 0); e.transcript('b', 'Quero um guarda-chuva', 50);
+  assert.equal(e.poll(1000), 'Quero um guarda-chuva');
+  e.audio(loud(), 1100);
+  assert.equal(e.transcript('b', 'Quero um guarda-chuva azul grande', 1200), true);
+  assert.equal(e.poll(2500), 'azul grande');
+});

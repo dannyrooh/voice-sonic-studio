@@ -52,5 +52,12 @@ test('legacy files open as Sonic and each pipeline requires its own model', () =
   const ready = validateConfig({ ...polly, cascade: { llmModelId: ' us.amazon.nova-2-lite-v1:0 ', pollyVoiceId: 'Camila' } }, { requireModel: true });
   assert.equal(ready.connection.modelId, '');
   assert.deepEqual(ready.cascade, { llmModelId: 'us.amazon.nova-2-lite-v1:0', pollyVoiceId: 'Camila' });
-  assert.throws(() => validateConfig({ ...defaults(), connection: { modelId: '' } }, { requireModel: true }), /modelo/i);
+  assert.throws(() => validateConfig({ ...defaults(), connection: { modelId: '' } }, { requireModel: true }), /identificador do modelo/i);
+});
+
+test('Polly pipeline does not require the hidden Sonic voice', () => {
+  const polly = { ...defaults(), pipeline: 'polly', cascade: { llmModelId: 'us.amazon.nova-2-lite-v1:0', pollyVoiceId: 'Camila' } };
+  polly.conversation = { ...polly.conversation, voiceId: '' };
+  assert.equal(validateConfig(polly, { requireModel: true }).conversation.voiceId, '');
+  assert.throws(() => validateConfig({ ...defaults(), conversation: { ...defaults().conversation, voiceId: '' } }), /voz/i);
 });
